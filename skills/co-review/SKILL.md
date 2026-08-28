@@ -1,9 +1,9 @@
 ---
 name: co-review
-description: Ask another coding-agent CLI — Codex, Claude Code, or Cursor Agent — to review work (a plan, a diff, or the current session's output), then implement the findings you agree with and argue the ones you do not. Use when the user asks for a second-opinion review from another agent, or invokes /co-review.
+description: Ask a child coding-agent CLI — Codex, Claude Code, or Cursor Agent — to review work (a plan, a diff, or the current session's output), then implement the findings you agree with and argue the ones you do not. Use when the user asks for a second-opinion review from another agent, or invokes /co-review.
 ---
 
-# Getting a second-opinion review from another agent
+# Getting a second-opinion review from a child agent
 
 You are the **implementer and the reviewer's counterpart**, not its assistant.
 The reviewer reviews and reports; it changes nothing.
@@ -17,7 +17,17 @@ The reviewer is whichever coding-agent CLI the user picks in section 1 — **Cod
 Every command form for all three lives in the [embedded harness CLI reference](#harness-cli-reference).
 **Read that section during section 1**, and take the commands from it verbatim rather than from memory.
 
-When you are the **Codex** parent, run every Codex, Claude Code, or Cursor Agent command through Codex's elevated host-shell path exactly as the [embedded harness CLI reference](#harness-cli-reference) §0 requires. Never use a parent-sandbox startup or authentication failure to conclude that the host harness is broken or logged out.
+Before preflight, identify which agent loaded this skill.
+If it is one of the three listed parents, read exactly one adjacent guide:
+
+- Codex reads `codex.md`.
+- Claude Code reads `claude.md`.
+- Cursor reads `cursor.md`.
+
+If none of those describes the loading agent, do not read an unrelated guide.
+Use the shared constraints and the loading agent's native managed asynchronous process facility.
+That guide governs the supervising parent agent only.
+Commands and flags for a selected child harness remain in the embedded harness CLI reference, even when the child happens to use the same product name as one of the guides.
 
 The loop is always: **preflight, brief, launch and wait, read the review, remediate or argue, send it back, close out.**
 
@@ -36,25 +46,20 @@ which codex; which claude; which cursor-agent || which agent
 
 A harness with no path is not installed and plays no further part.
 
-**Say none of this out loud.** Which binaries exist, which one you dropped and why, what you are about to run next — none of it is news to the user, and all of it is the plumbing they asked you to handle. Run steps 1 to 3 silently; the first thing the user sees from this section is the menu in step 4.
+**Say none of this out loud.** Which binaries exist, which ones failed availability checks and why, what you are about to run next — none of it is news to the user, and all of it is the plumbing they asked you to handle. Run steps 1 and 2 silently; the first thing the user sees from this section is the menu in step 3.
 
-### Step 2 — drop yourself
-
-**Whichever harness you are running as is not a candidate.** A review by your own CLI is not a second opinion — it is your own reasoning with a second signature on it, which is the exact failure this skill exists to prevent.
-Running inside Claude Code, that means `claude` is excluded even when it is installed.
-
-### Step 3 — ask each survivor for its models
+### Step 2 — ask each survivor for its models
 
 Run the listing command for every remaining candidate — the three forms are in the [embedded harness CLI reference](#harness-cli-reference) §2.
 This is also the availability check, and it is where a broken harness reveals itself: **not authenticated**, a login prompt, expired credentials, a quota or usage-limit error, a non-zero exit, or empty output all mean that harness is out of service.
 
-Drop it from the candidates, but **keep its exact message** — you report it in step 4. A harness the user believes they have access to, silently missing from the menu, is a worse outcome than a slow round.
+Drop it from the candidates, but **keep its exact message** — you report it in step 3. A harness the user believes they have access to, silently missing from the menu, is a worse outcome than a slow round.
 
 One verified asymmetry you must not paper over: **Codex's model listing succeeds even when its account is out of usage quota.** A clean listing proves Codex can be _asked_ about models, not that it can _run_ one. Codex's exhaustion appears only on the first real launch, and section 5 handles it there.
 
 **If no candidate survives this step**, stop and follow section 5 — do not start reading the code, and do not begin reviewing it yourself.
 
-### Step 4 — put the choice to the user
+### Step 3 — put the choice to the user
 
 Skip this step entirely when the user already named a harness and model in their request; that is their choice and you use it.
 
@@ -85,7 +90,7 @@ The user answers conversationally — "sol on high", "opus, think hard", "grok, 
 
 **A reviewer from a different model family than the author is worth more than a stronger model from the same one.** If this session's work was written by one harness, say so and lean toward reviewing it with another.
 
-### Step 5 — lock it in
+### Step 4 — lock it in
 
 Translate the choice into concrete flags using the [embedded harness CLI reference](#harness-cli-reference) §3, and use them verbatim in **every** round of this review.
 Do not change harness, model, or effort mid-review on your own.
@@ -138,12 +143,10 @@ Never reset, check out, or overwrite a whole path that was already dirty; if the
 
 ## 4. Launch it as a managed asynchronous task
 
-Use the parent-specific long-running process facility in the [embedded harness CLI reference](#harness-cli-reference) §4 for every launch and resume.
+Use the parent-specific long-running process facility from the adjacent guide you loaded for every launch and resume.
 Retain the returned task or session handle and keep the shell command itself attached inside that managed session; do not add shell `&` or invent a detached process.
 
 Take the launch command for the chosen harness from the [embedded harness CLI reference](#harness-cli-reference) §4, in that section's **review** posture:
-
-When the parent is Codex, the launch itself — and every later resume — must use `sandbox_permissions: "require_escalated"` with a task-specific approval justification, regardless of the chosen harness. Do not launch it inside the parent sandbox first.
 
 - **Codex** — `--sandbox workspace-write`, with the no-edit instruction from section 3 doing the work.
 - **Claude Code** — `--permission-mode bypassPermissions`, likewise guarded only by the instruction. Do **not** try to harden it with `--disallowed-tools`: verified, it blocks the edit tools and the model writes the file through Bash instead.
@@ -215,7 +218,10 @@ If the user asks for a status update, tell them it is still running and that you
 pgrep -fl '<harness> .*<slug>' || echo "not running"
 ```
 
-The process check answers the question. When the parent is Codex, run this lifecycle check through the elevated host shell for every harness. **Reading the transcript never becomes acceptable, not even on request.** It would also poison the review: you remediate against the finished write-up, never against half-formed findings glimpsed mid-run.
+The process check answers the question.
+Follow the adjacent parent guide for any parent-specific execution requirement.
+**Reading the transcript never becomes acceptable, not even on request.**
+It would also poison the review: you remediate against the finished write-up, never against half-formed findings glimpsed mid-run.
 
 If the user reports the run appears wedged and wants it stopped, kill it with the matching `pkill` from the [embedded harness CLI reference](#harness-cli-reference) §7 and then follow section 5.
 
@@ -305,7 +311,8 @@ The re-review prompt contains, in this order:
 6. **An explicit invitation to push back.** Say you want the correct outcome, not agreement, and that a reviewer who caves to a wrong rebuttal is worse than one that argues. Ask it to say plainly when your rebuttal has convinced it, so a closed finding does not stay open out of politeness.
 7. **A demand for a verdict on every open item, by name.** Ask it to close or contest each one individually rather than summarizing the round — a round that says "no blocking findings remain" while leaving three items unaddressed has settled nothing. Say that an item it considers minor still needs an explicit disposition, and that if it now agrees with a position of yours it should say so rather than going quiet.
 
-Then wait on that round's managed process handle until it exits. The rules in section 6 apply to every round without exception, especially the host-shell requirement and the rule that the parent reads only `<RESP>` plus the one-line `<SESSION>` metadata needed to resume.
+Then wait on that round's managed process handle until it exits.
+The rules in section 6 and the adjacent parent guide apply to every round without exception, especially the rule that the parent reads only `<RESP>` plus the one-line `<SESSION>` metadata needed to resume.
 
 **Re-verify from scratch every round.** A fix can introduce a fresh regression, and a regression in round N+1 is not covered by the verification you did in round N.
 
@@ -349,7 +356,6 @@ Report to the user:
 Note that the changes are staged (from the per-round staging step) and say so. Never **commit** unless the user asks.
 If the work is iterating, update the previous commit message rather than inventing a second one.
 
-<a id="harness-cli-reference"></a>
 ## Harness CLI reference
 
 > The verified command forms for the three coding-agent CLIs that the `co-implement`, `co-review`, and `orchestrate` skills delegate to.
@@ -360,16 +366,8 @@ The three harnesses are **Codex** (`codex`), **Claude Code** (`claude`), and **C
 In every command below, replace `<CURSOR_CMD>` with the Cursor executable found during availability checks and keep that choice for the whole task.
 All three take the prompt on stdin, run headless, emit JSON, and can resume a session by id.
 
-### 0. A Codex parent must use the host shell for every harness
-
-When the supervising parent is **Codex**, every external coding-agent CLI command — **Codex**, **Claude Code**, or **Cursor Agent** — must run outside the parent's sandbox through the elevated host-shell path (`sandbox_permissions: "require_escalated"`).
-Set that on Codex's command-tool call; it is not a harness CLI flag.
-This includes availability and model discovery, launches, resumes, provider status checks, and lifecycle checks or kills.
-The child still receives its documented sandbox or permission flags: those configure the child only after it starts and cannot escape the parent's sandbox during initialization.
-Supply a concise, task-specific approval justification on the first command; **do not try the parent sandbox first or diagnose its startup/authentication failure as a harness failure**.
-
-Keep the command's working directory at `<W>` and preserve the parent-managed asynchronous launch rule below.
-Host-shell elevation changes only where the harness process starts; it does not broaden the task, authorize extra edits, or relax any review/implementation guard.
+This reference describes the child harnesses being invoked.
+Instructions that depend on which agent loaded the skill belong in the adjacent `codex.md`, `claude.md`, or `cursor.md` parent guide and must not be inferred from the child command being run.
 
 ### 1. Availability
 
@@ -381,9 +379,10 @@ A harness that prints no path is not installed and is not a candidate.
 For Cursor, prefer `cursor-agent`; try the legacy `agent` executable only when `cursor-agent` is absent.
 `which` exits non-zero for a missing binary, so run the checks as one line and read the paths, not the overall exit status.
 
-**Exclude the harness you are yourself.** Delegating to your own CLI buys no second opinion and no fresh context window — it only pays for a subprocess that thinks the way you already do. Running inside Claude Code, `claude` is out.
+**A parent may delegate to the child CLI from the same product.**
+Do not remove a harness merely because it matches the agent that loaded the skill.
 
-**Do not narrate any of this.** Which binaries exist, which one you excluded and why, what you are about to run next — none of it is news to the user, and all of it is plumbing they asked you to handle. Run the commands and go straight to the menu in §8. The first thing the user should see from the preflight is the menu itself.
+**Do not narrate any of this.** Which binaries exist, which ones failed availability checks and why, what you are about to run next — none of it is news to the user, and all of it is plumbing they asked you to handle. Run the commands and go straight to the menu in §8. The first thing the user should see from the preflight is the menu itself.
 
 ### 2. Model listing, and what a dead harness looks like
 
@@ -457,10 +456,8 @@ Two verified traps:
 
 Child runs routinely outlive a synchronous shell-tool call.
 Submit every launch and resume through the supervising agent's managed long-running process facility, retain the returned task or session handle, and wait on that handle until the process exits.
-
-- **Codex parent:** use command execution with a short initial yield, retain the returned session id, and continue waiting through the session wait/input tool without reading `<LOG>`.
-- **Claude Code parent:** use the Bash tool with `run_in_background: true` and retain its task id.
-- **Other parents:** use their native managed background-task or yielded-session facility.
+Use the exact facility required by the parent guide loaded from the skill entrypoint.
+An unlisted parent must use its native managed background-task or yielded-session facility.
 
 The shell block below remains a foreground command *inside* that managed session so its post-exit extraction runs in order.
 Do not add shell `&`, `nohup`, or a detached subprocess of your own.
