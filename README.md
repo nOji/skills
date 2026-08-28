@@ -1,5 +1,11 @@
 # Agent Harness Skills
 
+Install all skills globally for Codex and Claude Code, using `~/.agents/skills/` as the canonical location and symlinks for both agents:
+
+```bash
+npx skills@latest add nOji/skills --skill '*' --agent codex --agent claude-code --global --yes
+```
+
 Three user-invoked [Agent Skills](https://agentskills.io/) for delegating coding work to Codex, Claude Code, or Cursor Agent.
 
 This repository is designed for installation through Vercel's [`skills` CLI](https://github.com/vercel-labs/skills).
