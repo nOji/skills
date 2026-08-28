@@ -6,7 +6,7 @@ This repository is designed for installation through Vercel's [`skills` CLI](htt
 It is a GitHub-hosted skill collection, not an npm package and not a native Claude Code plugin.
 
 > [!IMPORTANT]
-> Before publishing, replace every `OWNER/REPOSITORY` placeholder in this README with the final GitHub repository slug.
+> Before publishing, replace every `nOji/skills` placeholder in this README with the final GitHub repository slug.
 
 ## Included skills
 
@@ -24,25 +24,25 @@ Invoke it using the syntax supported by your agent, such as `$co-review` in Code
 Inspect the three available skills without installing them:
 
 ```bash
-npx skills@latest add OWNER/REPOSITORY --list
+npx skills@latest add nOji/skills --list
 ```
 
 Open the interactive skill and agent picker:
 
 ```bash
-npx skills@latest add OWNER/REPOSITORY
+npx skills@latest add nOji/skills
 ```
 
 Install one skill:
 
 ```bash
-npx skills@latest add OWNER/REPOSITORY@co-review
+npx skills@latest add nOji/skills@co-review
 ```
 
 Install all three globally for Codex without prompts:
 
 ```bash
-npx skills@latest add OWNER/REPOSITORY --skill '*' --agent codex --global --yes
+npx skills@latest add nOji/skills --skill '*' --agent codex --global --yes
 ```
 
 Project installation is the default when `--global` is omitted.
@@ -55,7 +55,7 @@ npx skills@latest update
 You can also use one skill for a single session without permanently installing it:
 
 ```bash
-npx skills@latest use OWNER/REPOSITORY@co-review --agent codex
+npx skills@latest use nOji/skills@co-review --agent codex
 ```
 
 ## Runtime requirements
@@ -115,7 +115,7 @@ During ordinary development, never edit `skills/` directly.
 ## Publish this repository
 
 No npm publication, marketplace submission, Changesets setup, or plugin manifest is required.
-Once the repository is public on GitHub, users can install directly from its `OWNER/REPOSITORY` slug.
+Once the repository is public on GitHub, users can install directly from its `nOji/skills` slug.
 
 1. Choose the final GitHub owner and repository name, then replace the README placeholders.
 2. In GitHub, create an empty public repository without generating another README, license, or `.gitignore`.
@@ -125,14 +125,14 @@ Once the repository is public on GitHub, users can install directly from its `OW
 git init -b main
 git add .
 git commit -m "Initial public release"
-git remote add origin git@github.com:OWNER/REPOSITORY.git
+git remote add origin git@github.com:nOji/skills.git
 git push -u origin main
 ```
 
 4. Verify remote discovery:
 
 ```bash
-npx skills@latest add OWNER/REPOSITORY --list
+npx skills@latest add nOji/skills --list
 ```
 
 The result should contain exactly `co-implement`, `co-review`, and `orchestrate`.
@@ -143,7 +143,7 @@ The result should contain exactly `co-implement`, `co-review`, and `orchestrate`
 skill_test_dir="$(mktemp -d)"
 cd "$skill_test_dir"
 git init
-npx skills@latest add OWNER/REPOSITORY@co-review --agent codex --copy --yes
+npx skills@latest add nOji/skills@co-review --agent codex --copy --yes
 ```
 
 6. Add a short GitHub description and topics such as `agent-skills`, `codex`, `claude-code`, and `cursor`.
