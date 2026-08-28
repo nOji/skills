@@ -8,16 +8,8 @@ The three harnesses are **Codex** (`codex`), **Claude Code** (`claude`), and **C
 In every command below, replace `<CURSOR_CMD>` with the Cursor executable found during availability checks and keep that choice for the whole task.
 All three take the prompt on stdin, run headless, emit JSON, and can resume a session by id.
 
-## 0. A Codex parent must use the host shell for every harness
-
-When the supervising parent is **Codex**, every external coding-agent CLI command — **Codex**, **Claude Code**, or **Cursor Agent** — must run outside the parent's sandbox through the elevated host-shell path (`sandbox_permissions: "require_escalated"`).
-Set that on Codex's command-tool call; it is not a harness CLI flag.
-This includes availability and model discovery, launches, resumes, provider status checks, and lifecycle checks or kills.
-The child still receives its documented sandbox or permission flags: those configure the child only after it starts and cannot escape the parent's sandbox during initialization.
-Supply a concise, task-specific approval justification on the first command; **do not try the parent sandbox first or diagnose its startup/authentication failure as a harness failure**.
-
-Keep the command's working directory at `<W>` and preserve the parent-managed asynchronous launch rule below.
-Host-shell elevation changes only where the harness process starts; it does not broaden the task, authorize extra edits, or relax any review/implementation guard.
+This reference describes the child harnesses being invoked.
+Instructions that depend on which agent loaded the skill belong in the adjacent `codex.md`, `claude.md`, or `cursor.md` parent guide and must not be inferred from the child command being run.
 
 ## 1. Availability
 
@@ -29,9 +21,10 @@ A harness that prints no path is not installed and is not a candidate.
 For Cursor, prefer `cursor-agent`; try the legacy `agent` executable only when `cursor-agent` is absent.
 `which` exits non-zero for a missing binary, so run the checks as one line and read the paths, not the overall exit status.
 
-**Exclude the harness you are yourself.** Delegating to your own CLI buys no second opinion and no fresh context window — it only pays for a subprocess that thinks the way you already do. Running inside Claude Code, `claude` is out.
+**A parent may delegate to the child CLI from the same product.**
+Do not remove a harness merely because it matches the agent that loaded the skill.
 
-**Do not narrate any of this.** Which binaries exist, which one you excluded and why, what you are about to run next — none of it is news to the user, and all of it is plumbing they asked you to handle. Run the commands and go straight to the menu in §8. The first thing the user should see from the preflight is the menu itself.
+**Do not narrate any of this.** Which binaries exist, which ones failed availability checks and why, what you are about to run next — none of it is news to the user, and all of it is plumbing they asked you to handle. Run the commands and go straight to the menu in §8. The first thing the user should see from the preflight is the menu itself.
 
 ## 2. Model listing, and what a dead harness looks like
 
@@ -105,10 +98,8 @@ Two verified traps:
 
 Child runs routinely outlive a synchronous shell-tool call.
 Submit every launch and resume through the supervising agent's managed long-running process facility, retain the returned task or session handle, and wait on that handle until the process exits.
-
-- **Codex parent:** use command execution with a short initial yield, retain the returned session id, and continue waiting through the session wait/input tool without reading `<LOG>`.
-- **Claude Code parent:** use the Bash tool with `run_in_background: true` and retain its task id.
-- **Other parents:** use their native managed background-task or yielded-session facility.
+Use the exact facility required by the parent guide loaded from the skill entrypoint.
+An unlisted parent must use its native managed background-task or yielded-session facility.
 
 The shell block below remains a foreground command *inside* that managed session so its post-exit extraction runs in order.
 Do not add shell `&`, `nohup`, or a detached subprocess of your own.

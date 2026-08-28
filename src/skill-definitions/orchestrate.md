@@ -1,15 +1,32 @@
 ---
 name: orchestrate
-description: Orchestrate a series of tasks by delegating each one to a coding-agent CLI (Codex, Claude Code, or Cursor Agent), one task at a time, stopping every N tasks for the user's confirmation. Use when the user wants a numbered list of tasks, plan sessions, or steps executed sequentially by another harness while this agent just supervises, logs, and commits. Not for a single supervised implementation or review.
+description: Orchestrate a series of tasks by delegating each one to a child coding-agent CLI (Codex, Claude Code, or Cursor Agent), one task at a time, stopping every N tasks for the user's confirmation. Use when the user wants a numbered list of tasks, plan sessions, or steps executed sequentially by a child harness while this agent just supervises, logs, and commits. Not for a single supervised implementation or review.
 ---
 
 # Orchestrating a series of delegated tasks
 
-You are the **orchestrator**, not the implementer and not the reviewer. A different coding-agent CLI does every task; you launch it, wait on its managed process handle, record what it reported, keep any task-tracking file honest, stage and commit its work, and move to the next task — pausing every N tasks for the user to say "continue."
+You are the **orchestrator**, not the implementer and not the reviewer.
+A child coding-agent CLI does every task; you launch it, wait on its managed process handle, record what it reported, keep any task-tracking file honest, stage and commit its work, and move to the next task — pausing every N tasks for the user to say "continue."
 
-This workflow is deliberately narrow: you do not review the delegate's work, push back on it, or iterate against acceptance criteria. You trust the delegate's own report. If the user wants a supervised, argued-over implementation of one task, use a dedicated single-task supervision workflow instead. This skill is for **running a queue**.
+This workflow is deliberately narrow: you do not review the delegate's work, push back on it, or iterate against acceptance criteria.
+You trust the delegate's own report.
+If the user wants a supervised, argued-over implementation of one task, use a dedicated single-task supervision workflow instead.
+This skill is for **running a queue**.
 
-All harness command forms — launch, resume, model listing, background rules, failure signatures — live in the [embedded harness CLI reference](#harness-cli-reference). **Read that section before launching anything**, and take every command from it verbatim rather than from memory. When you are a Codex parent, follow the embedded harness CLI reference §0's elevated host-shell rule for every Codex, Claude Code, or Cursor Agent command.
+Before gathering the queue, identify which agent loaded this skill.
+If it is one of the three listed parents, read exactly one adjacent guide:
+
+- Codex reads `codex.md`.
+- Claude Code reads `claude.md`.
+- Cursor reads `cursor.md`.
+
+If none of those describes the loading agent, do not read an unrelated guide.
+Use the shared constraints and the loading agent's native managed asynchronous process facility.
+That guide governs the supervising parent agent only.
+Commands and flags for a selected child harness remain in the embedded harness CLI reference, even when the child happens to use the same product name as one of the guides.
+
+All child-harness command forms — launch, resume, model listing, review posture, and failure signatures — live in the [embedded harness CLI reference](#harness-cli-reference).
+**Read that section before launching anything**, and take every child command from it verbatim rather than from memory.
 
 ## 1. Gather the task series and the operating parameters
 
@@ -37,7 +54,7 @@ The only files you read directly are:
 For each task in the current batch, in order:
 
 1. **Baseline and launch.** Run the embedded harness CLI reference §4's local-ignore preflight before each task, then capture three separate ownership artifacts under `.agent-runs/`: `git diff --cached --binary HEAD`, `git diff --binary`, and a null-safe manifest containing the path, file type, and SHA-256 content hash of every untracked file. Build the prompt from the task's own file or description — keep it short and point at the file path rather than restating its contents; a well-authored task file (a plan session, a ticket) is written to be self-sufficient for a fresh-context agent. Tell the delegate to read and follow any applicable `AGENTS.md` and `CLAUDE.md` files, because the harnesses do not auto-load the same instruction filenames. Do not add scope, acceptance criteria, or other instructions of your own — the task defines its own done-ness. Launch through the embedded harness CLI reference §4's parent-managed asynchronous facility, writing `<RESP>`/`<LOG>` under `.agent-runs/` at the repo root.
-2. **Wait on the managed handle.** Do not do other work, read other files, or start the next task while one is running. Use the parent-specific wait operation from the embedded harness CLI reference §4 until the process exits.
+2. **Wait on the managed handle.** Do not do other work, read other files, or start the next task while one is running. Use the parent-specific wait operation from the adjacent guide you loaded until the process exits.
 3. **Read only `<RESP>` plus the one-line `<SESSION>` metadata when resuming.** Never touch `<LOG>` — not even on failure; the embedded harness CLI reference §7 has the bounded failure extraction for that case.
 4. **If the task signals it is blocked** — waiting on missing information, a decision only the user can make, credentials, access it doesn't have — stop the batch immediately, even mid-batch. Print the delegate's blocking question verbatim to the user, wait for their answer, then **resume the same harness session** (embedded harness CLI reference §6) with that answer. Do not skip ahead to the next task while one is blocked, and do not answer on the user's behalf.
 5. **Verify the state-tracking convention**, if one applies. Check the file(s) the delegate was supposed to update. If it correctly reflects the task as complete (and unblocks whatever it was supposed to unblock), proceed. **If it did not update correctly, resume the same session** and ask it to fix the tracking state before moving on — don't edit the tracking file yourself and don't silently continue with a stale state, and don't launch a fresh session to do another agent's bookkeeping.
