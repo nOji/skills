@@ -19,6 +19,22 @@ Do not try the parent sandbox first or interpret its startup or authentication f
 Host-shell elevation changes only where the child process starts.
 It does not broaden the task, authorize additional edits, or relax any implementation or review guard.
 
+## Get permission before running Claude Code unrestricted
+
+Before launching Claude Code with `--permission-mode bypassPermissions`, confirm that the user explicitly authorized that capability.
+Choosing Claude or naming a model is not authorization.
+If authorization is missing, ask once and wait for a clear yes:
+
+> Claude Code needs `--permission-mode bypassPermissions` to access this repository.
+> This lets Claude inspect and transmit repository content, run commands, and potentially modify files.
+> Do you authorize this for the complete Claude session, including resume rounds?
+
+After authorization, keep repository access unrestricted, include the authorization in the host-shell escalation justification, and do not ask again for the same Claude session.
+Review prompts and content baselines may detect unwanted edits, but they do not restrict this capability.
+
+If the host rejects the launch after authorization, stop and offer another harness or a user-run Claude session.
+Do not attempt an approval workaround.
+
 ## Use Codex's managed asynchronous command session
 
 Launch and resume child runs with command execution using a short initial yield.
@@ -28,3 +44,6 @@ Keep the harness shell block in the foreground inside that managed session so it
 Do not add shell `&`, `nohup`, or another detached subprocess.
 Use the same elevated host-shell path for the launch, every resume, and any later lifecycle check or kill.
 If no managed asynchronous command session is available, stop and explain that the workflow cannot run safely.
+
+When submitting multiline shell through Codex's `functions.exec`, use a JavaScript `String.raw` template literal.
+Do not double-escape an embedded `jq` program.
