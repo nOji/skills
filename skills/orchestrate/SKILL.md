@@ -1,477 +1,686 @@
 ---
 name: orchestrate
-description: Orchestrate a series of tasks by delegating them to child coding-agent CLIs (Codex, Claude Code, or Cursor Agent), as an ordered queue or as user-approved parallel waves, stopping at the user's chosen boundaries. Use when the user wants a numbered list of tasks, plan sessions, or steps executed by child harnesses while this agent supervises, logs, and coordinates commits. Not for a single supervised implementation or review.
+description: Run an existing task series through Codex, Claude Code, or Cursor Agent with an approved dependency schedule, optional parallel execution, per-task reviewers, and coordinated review and commit completion.
 ---
 
-# Orchestrating a series of delegated tasks
+# Coordinate a task series
 
-You are the **orchestrator**, not the implementer and not the reviewer.
-Child coding-agent CLIs do every task; you launch them, wait on their managed process handles, record what they reported, keep any task-tracking file honest, coordinate task-owned commits, and move through the approved schedule — pausing at the user's chosen boundaries.
+You coordinate execution, review exchanges, tracking, and authorized commits.
+Child agents implement and review.
+Do not study implementation source or decide technical findings yourself.
+Use task definitions, dependency information, ownership metadata, tracking files, and final agent reports.
 
-This workflow is deliberately narrow: you do not review the delegate's work, push back on it, or iterate against acceptance criteria.
-You trust the delegate's own report.
-If the user wants a supervised, argued-over implementation of one task, use a dedicated single-task supervision workflow instead.
-This skill is for **running a queue**.
+Read the [harness reference](#harness-cli-reference) before running children and the [review protocol](#review-protocol) for reviewed tasks.
+Read only the adjacent parent guide matching the agent that loaded this skill: `codex.md`, `claude.md`, or `cursor.md`.
+For another parent, use its native managed asynchronous process facility.
 
-Before gathering the queue, identify which agent loaded this skill.
-If it is one of the three listed parents, read exactly one adjacent guide:
+## 1. Agree on the run
 
-- Codex reads `codex.md`.
-- Claude Code reads `claude.md`.
-- Cursor reads `cursor.md`.
+Use the user's request and task documents to enumerate the series without redefining its tasks.
+Resolve only missing decisions:
 
-If none of those describes the loading agent, do not read an unrelated guide.
-Use the shared constraints and the loading agent's native managed asynchronous process facility.
-That guide governs the supervising parent agent only.
-Commands and flags for a selected child harness remain in the embedded harness CLI reference, even when the child happens to use the same product name as one of the guides.
+- Tasks, dependencies, and any shared files or mutable resources.
+- Implementor harness and model, including per-task overrides when requested.
+- Review coverage and reviewer harness/model for each reviewed task.
+- Execution order and which independent tasks may overlap.
+- Batch boundaries and whether to commit after each completed task.
+- Existing tracking and outcome-log conventions, and how to use delegates' commit suggestions.
 
-All child-harness command forms — launch, resume, model listing, review posture, and failure signatures — live in the [embedded harness CLI reference](#harness-cli-reference).
-**Read that section before launching anything**, and take every child command from it verbatim rather than from memory.
+Use the harness reference's discovery and model-selection instructions.
+Retain selections and full-access authorization already provided.
+Do not add a separate memory-settings question; preserve each harness's normal configuration unless the user requests a change.
 
-## 1. Gather the task series and the operating parameters
+**Ask about reviews unless the user explicitly declined them.**
+Support reviewing all tasks, selected tasks, or none, with different reviewers for different tasks.
+Do not treat an omitted reviewer assignment as permission to skip review.
+A review explicitly requested for a group or the combined result is its own checkpoint with a defined subject and dependencies.
 
-Before running anything, get four things from the user — ask for whichever aren't already given:
+**Propose parallel execution when independence is plausible, and obtain approval for the concrete schedule.**
+Consider shared edits, generated output, test databases, ports, and other mutable resources, not just task numbering.
+Serialize conflicting phases or use separate resources already supported by the project.
+When independence is uncertain, use sequential execution.
 
-1. **What the tasks are and how they relate.** The user may provide a list, a range of numbered items, a set of files (e.g. session files in a plan folder), or a description you can enumerate yourself once. Make a best effort to understand the requested series from that context and the task or plan files without reading implementation source. Enumerate the full task list back to the user before starting if it was implicit (a range, a folder glob) rather than named explicitly — an orchestrator that silently miscounts the queue is worse than one that asks. Identify explicit dependencies, shared ownership, and ordering constraints. If it is obvious that some tasks are independent and safe to run concurrently, propose the concrete schedule and ask the user to approve parallel execution before launching it. For example: "I can run Sessions 1–9 in parallel, wait for all of them to finish, then run Sessions 10 and 11 sequentially because they depend on that work. Would you like me to proceed that way?" If parallel safety is unclear, the user does not approve it, or the user explicitly requested sequential execution, keep the series sequential.
-2. **The harness and model.** Follow the embedded harness CLI reference §1–3 and §8 to find installed harnesses, list their models, and present the menu. Skip the menu if the user already named a harness and model. If the chosen harness is **Codex**, ask once whether to add `-c 'features.memories=false'` (see the note in that reference) and reuse that answer for every task in the run.
-3. **Batch size — how many tasks to run before stopping for confirmation.** Ask directly: "How many tasks at a time before I stop for your OK?" Do not assume 1, 3, or "all of them." A user asking to run "the rest" or naming an explicit range without a batch size is choosing to run that whole range without stopping — that is a valid answer, not a gap to fill in. For an approved parallel schedule, treat each parallel wave as indivisible and confirm the next boundary after the whole wave settles.
-4. **Whether to commit after each task**, and if so, whether there's a repo convention to follow for commit messages (check `CLAUDE.md`/`AGENTS.md` at the repo root — e.g. a required body, a forbidden co-author trailer). Most delegates will suggest a commit message in their final report; confirm whether to use it verbatim or adapt it.
+Ask for a batch size only when the requested stopping boundary is missing.
+"The rest" or an explicit range without intermediate stops means the entire requested range.
+An approved concurrent batch must settle all its active task and review sessions before its confirmation boundary.
 
-If the task series has its own **state-tracking convention** — a status table, a `READY`/`WIP`/`DONE`-style column, a progress log the delegate is expected to update as part of doing the task — get that convention from the user or from the series' own instructions now, not per-task. You will re-verify it after every single task in section 3.
+## 2. Select the review route
 
-## 2. Scope discipline
+For each reviewed task, check whether its implementor can invoke an installed, enabled `co-review` skill using the harness reference's discovery and invocation rules.
+Check the actual child environment; a skill visible to the orchestrator alone is insufficient.
+Do not install, rebuild, or reconfigure skills to make this route available.
 
-**Do not read source files the tasks touch.** Your job is to launch, wait, and record — not to audit the implementation. Reading into the target codebase defeats the reason this skill delegates in the first place: it burns the exact context budget the delegate's fresh process exists to spare you.
+When usable, **prefer resuming the original implementor with co-review**.
+Tell the user that the implementor will run its selected reviewer and resolve the findings itself.
+Show this route in the plan table.
+The implementor keeps its task context and owns every fix.
 
-The only files you read directly are:
+Otherwise use **orchestrator-mediated review**.
+Launch a separate reviewer, send it the implementor's final report and the review brief, and relay the exchange yourself.
+Both routes use the shared mutual-agreement protocol and the user's selected reviewer.
+Honor an explicit route preference.
 
-- The task's own definition (a session file, a numbered list item, a task description) — enough to write the prompt.
-- Any state-tracking file named in section 1, to confirm it was updated correctly.
-- `<RESP>` files, per the embedded harness CLI reference §5 — never `<LOG>`.
+For a combined review, identify the author session responsible for responding and making any cross-task fixes before starting that checkpoint.
+Do not let two author sessions make competing integration fixes.
 
-## 3. Sequential execution
+## 3. Present the plan and get confirmation
 
-For each task in the current batch, in order:
+Present a readable Markdown table using actual task names and selected model display names.
+For example:
 
-1. **Baseline and launch.** Run the embedded harness CLI reference §4's local-ignore preflight before each task, then capture three separate ownership artifacts under `.agent-runs/`: `git diff --cached --binary HEAD`, `git diff --binary`, and a null-safe manifest containing the path, file type, and SHA-256 content hash of every untracked file. Build the prompt from the task's own file or description — keep it short and point at the file path rather than restating its contents; a well-authored task file (a plan session, a ticket) is written to be self-sufficient for a fresh-context agent. Tell the delegate to read and follow any applicable `AGENTS.md` and `CLAUDE.md` files, because the harnesses do not auto-load the same instruction filenames. Do not add scope, acceptance criteria, or other instructions of your own — the task defines its own done-ness. Launch through the embedded harness CLI reference §4's parent-managed asynchronous facility, writing `<RESP>`/`<LOG>` under `.agent-runs/` at the repo root.
-2. **Wait on the managed handle.** Do not do other work, read other files, or start the next task while one is running. Use the parent-specific wait operation from the adjacent guide you loaded until the process exits.
-3. **Read only `<RESP>` plus the one-line `<SESSION>` metadata when resuming.** Never touch `<LOG>` — not even on failure; the embedded harness CLI reference §7 has the bounded failure extraction for that case.
-4. **If the task signals it is blocked** — waiting on missing information, a decision only the user can make, credentials, access it doesn't have — stop the batch immediately, even mid-batch. Print the delegate's blocking question verbatim to the user, wait for their answer, then **resume the same harness session** (embedded harness CLI reference §6) with that answer. Do not skip ahead to the next task while one is blocked, and do not answer on the user's behalf.
-5. **Verify the state-tracking convention**, if one applies. Check the file(s) the delegate was supposed to update. If it correctly reflects the task as complete (and unblocks whatever it was supposed to unblock), proceed. **If it did not update correctly, resume the same session** and ask it to fix the tracking state before moving on — don't edit the tracking file yourself and don't silently continue with a stale state, and don't launch a fresh session to do another agent's bookkeeping.
-6. **Log the outcome.** Distill `<RESP>` into a short per-task record: what was implemented (without the commit-message boilerplate, which belongs in the commit itself) and any verification/testing steps the user should run. Write it wherever the user asked in section 1, or propose a sensible default (e.g. a `.dev/`-style log directory) if they didn't say.
-7. **Commit**, if section 1 said to. Compare the completed tree with that task's ownership baseline, then stage only paths and hunks proven to belong to the completed task, preserving any pre-existing user work. Commit with the delegate's suggested message (verbatim or adapted per the user's convention from section 1). Never use `git add -A` or `git add .`. The local-ignore preflight in the embedded harness CLI reference §4 must already protect `.agent-runs/`; attempts to add it should be treated as a no-op, not an error.
-8. **Report the task and move on.** A short status line is enough per task; save the fuller readout for the batch summary in section 5.
+| Order / ready condition | Task | Depends on | Implementor | Reviewer | Review route |
+| --- | --- | --- | --- | --- | --- |
+| Start together ∥ | Task A | — | Selected model | Selected reviewer | co-review |
+| Start together ∥ | Task B | — | Selected model | None, as requested | — |
+| After A is done | Task C | A | Selected model | Different reviewer | Relayed |
 
-## 4. User-approved parallel execution
+Below it, state the batch stopping points, commit policy, and full host access for the run, resumes, and nested reviews.
+Explain any shared-resource phases that must run sequentially.
+Ask for confirmation before the first launch.
+Reuse approval of this exact plan rather than asking again.
 
-Use parallel execution only for the exact independent wave the user approved.
-Before launching the wave, capture the ownership artifacts from section 3 for every task against the same pre-wave tree state.
-Launch one implementor session per task through the parent-managed asynchronous facility.
-In every parallel implementor prompt, say that other agents are working concurrently in the same repository or folder, so unrelated changes may appear while it works; those changes are expected, must not be treated as corruption or reverted, and must not be staged or committed.
+## 4. Execute the approved schedule
 
-Listen for all running task handles rather than waiting for only one predetermined task.
-As each implementor finishes, read its `<RESP>`, record its result, and keep listening until every already-launched task has finished, failed, or reported a blocker.
-Do not start a dependent wave until every prerequisite task has completed successfully and any required task-owned commit exists.
+Maintain a compact record per task:
 
-If commits are enabled for the run, ask each finished implementor — by resuming that same harness session — to commit **only its own changes** using its suggested commit message, adapted only for the repository convention agreed in section 1.
-Serialize these commit follow-ups so parallel sessions never race over the shared Git index.
-The resumed implementor must compare against its pre-wave ownership baseline, exclude pre-existing and concurrent-agent changes, avoid `git add -A` and `git add .`, and report the resulting commit hash.
-The orchestrator must not take over a parallel task's commit merely because its implementor has already returned once.
+- Task scope, dependencies, file/resource ownership, and selected settings.
+- Implementor session ID and, when applicable, reviewer session ID.
+- Review route, round, finding ledger or delegated review report, and response paths.
+- State: `waiting`, `implementing`, `reviewing`, `fixing`, `finalizing`, `done`, `blocked`, or `failed`.
 
-If one parallel task is blocked or fails, stop launching new work but continue listening for and recording every task that is already running.
-Present the blocker or failure after the active wave settles, and do not launch dependent work.
+Before a launch, capture the harness reference's ownership baseline.
+For tasks launched together, use the same initial batch boundary and record each task's ownership.
+Give each task and role separate run files.
 
-## 5. Batch boundaries
+Build a minimal prompt from the user's task or its definition.
+Add only decisions needed for this execution: its review assignment, ownership, shared-resource coordination, and commit timing.
+Do not repeat automatically loaded agent instructions, ask it to read generic context documents, or restate routine reporting conventions.
 
-After completing the number of sequential tasks the user set in section 1, or after an approved parallel wave settles:
+For concurrent work, include this brief instruction:
 
-- Print a consolidated summary: one line per task (what it was, DONE/blocked/failed), a pointer to the per-task logs, and any cross-cutting issue you had to intervene on (like a stale tracking state you had to ask a session to fix).
-- State what the next task in the queue is.
-- **Stop and wait for the user to say "continue"** before launching anything further. Do not pre-launch the next batch's first task speculatively while waiting.
+> Other tasks are running in this checkout.
+> Unrelated changes are expected; leave them intact and do not stage or commit them.
+> Stay within this task's ownership and report an overlap so the conflicting phase can be serialized.
 
-If the user says "continue," follow the approved schedule for the next sequential batch or parallel wave, unless they change the schedule, batch size, or remaining scope.
+Keep shared tracking writes and Git index operations serialized too.
+The implementor must wait for its commit turn even if its normal task instructions suggest committing immediately.
 
-## 6. Failures
+Launch ready tasks through the parent's managed asynchronous facility.
+Listen to all active handles and process results as they arrive.
+Do not inspect streamed transcripts or read implementation source while waiting.
 
-A task that fails outright (the embedded harness CLI reference §7's dead-run signatures) is not the same as a task that reports being blocked. Materialize the bounded diagnostic into `<RESP>` per §7, report it to the user with the exact failure signature, and stop the batch — don't retry the same launch speculatively, and don't silently skip to the next task in the queue.
+A task enters review as soon as its implementor finishes, while independent tasks continue.
+Keep its author from editing the reviewed work during a reviewer round.
+A dependent task becomes ready only after its prerequisites have completed their assigned reviews, tracking, and required commits.
+No-review tasks proceed directly to finalization.
 
-## 7. What this skill is not
+## 5. Run the assigned review
 
-- Not a reviewer. If the user wants the delegate's work checked against acceptance criteria and pushed back on, use a dedicated supervised implementation or review workflow.
-- Not a planner. It runs a task series someone already wrote; it does not decide what the tasks should be. Inferring and proposing an execution schedule from obvious dependencies is orchestration, not permission to redefine the tasks.
-- Not an editor of the tasks themselves. If a task's own file is wrong or stale, surface that to the user rather than correcting it yourself mid-run, unless the user has explicitly asked you to also maintain that content.
+### Preferred route: implementor-managed co-review
+
+Resume the original implementor with the harness's explicit skill invocation.
+Pass the selected reviewer harness/model/effort/speed, task scope, and the approved execution constraints.
+Carry forward the run's full host authorization and any concurrency or commit restrictions.
+These are supplied user decisions, so the child must not ask the user to choose them again.
+
+The implementor runs co-review, owns the fixes and rebuttals, and returns the final mutual-agreement report.
+Keep the task in `reviewing` or `fixing` until the report accounts for every finding and confirms review of the final work.
+A report that merely says "implemented" or "no blockers" without settling open items is incomplete; resume the implementor to finish the exchange.
+
+If co-review cannot be loaded, retain the implementation and switch to the embedded relayed route with the same reviewer selection.
+Report the route change briefly.
+A harness, model, access, or quota failure follows the failure rules instead; changing routes must not bypass that failure.
+
+### Fallback route: relay the review exchange
+
+Launch the selected reviewer with the shared protocol's brief and reviewer instructions.
+Include the implementor's original final response as claims to verify, the task definition, and its ownership boundary.
+The reviewer has full evidence-gathering access but does not repair the work.
+
+After the reviewer exits:
+
+1. Send its findings and evidence to the same implementor session.
+   Ask for a response to every finding, accepted fixes, evidence for rebuttals, and a list of changes.
+2. Update the ledger from the implementor's response.
+3. Resume the same reviewer with that response and the ledger.
+   Require review of the affected final state and an explicit disposition for each item.
+4. Relay contested or new items back to the implementor and continue.
+
+Send even a clean initial review to the implementor for acceptance.
+If it accepts without changing the work, no extra reviewer round is needed.
+Any further edit to the reviewed work requires another reviewer round.
+
+You coordinate agreement; you do not decide that a finding is wrong, make a fix, or close an unanswered item yourself.
+Finish only when the shared mutual-agreement completion conditions hold.
+
+## 6. Finalize a task
+
+Confirm required implementation and review reports are complete before marking the task done.
+Verify its state-tracking convention.
+If tracking is missing or wrong, resume the same implementor to correct it; do not silently advance or edit its task content yourself.
+Bookkeeping outside the review subject may follow sign-off; changes to reviewed work require re-review.
+
+Write a concise outcome record in the agreed location: what completed, review disposition, response paths, and any remaining verification or user action.
+Distinguish verified review conclusions from an unreviewed implementor's own report.
+
+If commits were approved, commit only after the task's review is resolved.
+For sequential work, stage and commit only changes proven to belong to that task.
+For concurrent work, resume the original implementor for its own commit and serialize these follow-ups so they cannot race over the shared index.
+Preserve pre-existing and other agents' changes, use the agreed commit-message convention, and record the commit hash.
+Do not create commits when the run's policy does not authorize them.
+
+Report the task's outcome briefly and launch newly ready work within the approved batch.
+
+## 7. Boundaries, blockers, and failures
+
+At a batch boundary, let every already-started task and review in that batch settle.
+Show a consolidated table with task status, review status, outcome or blocker, and commit when applicable.
+Link the outcome records, identify the next tasks, and wait for the user's continuation before launching another batch.
+
+If a task needs a user decision, stop launching new work.
+Let already-active independent sessions settle, record all results, and present the blocking question without answering it on the user's behalf.
+Resume the same affected session after the answer.
+Do not start dependent work or call the task complete while blocked.
+
+On process failure, preserve work and session IDs, materialize the bounded diagnostic using the harness reference, and stop new launches.
+Do not skip the failed task, silently change models, or take over its implementation or review.
+When a supplied full-access launch was accidentally restricted, correct the launch to the already-authorized settings and resume; no new permission question is needed.
+An actual host-policy rejection, missing credential, or unavailable service remains a real blocker.
 
 ## Harness CLI reference
 
-> The verified command forms for the three coding-agent CLIs that the `co-implement`, `co-review`, and `orchestrate` skills delegate to.
-> Every command below was run on this machine and behaved as described.
-> Prefer these forms verbatim; when one fails, report what it printed rather than inventing a variant.
+Shared launch, invocation, ownership, and recovery instructions for Codex, Claude Code, and Cursor Agent.
+Parent-specific process tools belong in the adjacent parent guides.
 
-The three harnesses are **Codex** (`codex`), **Claude Code** (`claude`), and **Cursor Agent** (`cursor-agent`, with `agent` as a legacy fallback).
-In every command below, replace `<CURSOR_CMD>` with the Cursor executable found during availability checks and keep that choice for the whole task.
-All three take the prompt on stdin, run headless, emit JSON, and can resume a session by id.
+Checked against official documentation and local CLI help on 2026-09-06: Codex 0.153.4, Claude Code 2.1.246, and Cursor Agent 2026.08.25-3e8eec8.
+This is not a claim that every model, account, integration, or command combination was exercised.
+Use the installed CLI's help and current catalog when a version differs; never invent flags or model IDs.
 
-This reference describes the child harnesses being invoked.
-Instructions that depend on which agent loaded the skill belong in the adjacent `codex.md`, `claude.md`, or `cursor.md` parent guide and must not be inferred from the child command being run.
+### 1. Discover and select
 
-### 1. Availability
+Before studying implementation files, find the installed executables.
+A parent may delegate to the same product.
 
 ```bash
-which codex; which claude; which cursor-agent || which agent
+command -v codex
+command -v claude
+command -v cursor-agent || command -v agent
 ```
 
-A harness that prints no path is not installed and is not a candidate.
-For Cursor, prefer `cursor-agent`; try the legacy `agent` executable only when `cursor-agent` is absent.
-`which` exits non-zero for a missing binary, so run the checks as one line and read the paths, not the overall exit status.
+Treat each returned path independently; a missing executable does not invalidate the other candidates.
+Use the discovered Cursor executable as `agent_cursor_cmd` throughout the task.
+Check available models and authentication without printing credentials or full configuration.
 
-**A parent may delegate to the child CLI from the same product.**
-Do not remove a harness merely because it matches the agent that loaded the skill.
-
-**Do not narrate any of this.** Which binaries exist, which ones failed availability checks and why, what you are about to run next — none of it is news to the user, and all of it is plumbing they asked you to handle. Run the commands and go straight to the menu in §8. The first thing the user should see from the preflight is the menu itself.
-
-### 2. Model listing, and what a dead harness looks like
-
-#### Codex
+For Codex, filter the catalog before it enters the parent context:
 
 ```bash
+set -o pipefail
 codex debug models | jq -r '
-  ["MODEL", "REASONING EFFORTS", "MODES"],
-  (
-    .models[]
-    | select(.visibility == "list")
-    | [
-        .slug,
-        ([.supported_reasoning_levels[].effort] | join(", ")),
-        (if any(.service_tiers[]?; .id == "priority") then "normal, fast" else "normal" end)
-      ]
-  )
+  .models[] | select(.visibility == "list")
+  | [.slug,
+     ([.supported_reasoning_levels[]?.effort] | join(", ")),
+     ([.service_tiers[]?.id] | join(", "))]
   | @tsv
-' | column -t -s $'\t'
+'
 ```
 
-**Never read the raw output of `codex debug models`** — the catalog carries every model's full system prompt and runs to roughly 250 KB. Always pipe it through `jq`.
+Never print the raw catalog: it includes model prompts.
+A successful listing does not establish remaining execution quota.
 
-The `MODEL` column is the exact `-m` value, `REASONING EFFORTS` is that row's permitted `model_reasoning_effort` levels, and `MODES` says whether the row accepts a fast tier.
-
-> **Verified caveat, and it matters:** `codex debug models` succeeded on this machine while the account was fully out of usage quota.
-> The catalog is served independently of the run quota, so a clean listing is **not** proof that Codex can execute anything.
-> Codex's exhaustion surfaces only on the first real run — see §7.
-
-#### Claude Code
+For Cursor:
 
 ```bash
-echo "/model" | claude -p --output-format json | jq -r '.result'
+set -o pipefail
+"$agent_cursor_cmd" --list-models 2>&1 \
+  | sed $'s/\033\\[[0-9;]*[A-Za-z]//g'
 ```
 
-Returns the current model and the alias list, e.g. `sonnet, opus, haiku, fable, best, sonnet[1m], opus[1m], fable[1m], opusplan, default, or a full model ID`.
+For Claude, `claude auth status` checks authentication.
+Use the installed CLI's supported aliases and the [model configuration reference](https://code.claude.com/docs/en/model-config), accounting for known account or configured restrictions.
+Claude does not document a general `--list-models` equivalent.
+Do not present a model's prose response to `/model` as an authoritative account catalog.
 
-#### Cursor Agent
+Retain actual discovery errors and mark unavailable harnesses with a short reason.
+Authentication and catalogs do not guarantee quota or model access; handle execution failures when they occur.
+
+Present a compact menu only for choices still missing.
+Show display names, one line per harness, and ask for the model, supported effort, and available speed choice.
+Shortlist Cursor's model families rather than printing every variant.
+Use the calling skill's recommendation only when available.
+Treat selections supplied through an approved orchestration prompt as already answered.
+Do not switch harness, model, effort, or requested speed on your own.
+If runtime metadata reports a substituted model, surface it rather than attributing the work to the requested model.
+
+| Harness | Model and effort | Speed |
+| --- | --- | --- |
+| Codex | `-m <id>`, `-c 'model_reasoning_effort="<effort>"'` | Fast uses `-c 'service_tier="priority"'` when the catalog supports it; normal uses the configured standard setting |
+| Claude Code | `--model <alias-or-id>`, `--effort <supported-level>` | Supported Opus models can use `--settings '{"fastMode":true}'` |
+| Cursor Agent | `--model <catalog-entry>` | Use the catalog's exact effort/speed variant or documented parameterized model form |
+
+Omit effort flags for models that do not support them.
+Do not invent Cursor suffixes from a family name.
+If an explicit normal-speed choice conflicts with saved fast-mode settings, resolve that per-run setting before launch rather than silently retaining fast mode.
+Claude fast mode requires supported account access and may use separately billed usage credits; offer it only with that distinction clear.
+See [Claude fast mode](https://code.claude.com/docs/en/fast-mode).
+
+### 2. Preserve normal capabilities
+
+Use full host access for the authorized task, including local services, Docker, networking, resumes, and nested reviews.
+Carry existing authorization forward; do not insert another approval question at every launch or review round.
+Honor a user-requested restriction and any enforced host or organization policy.
+
+There are two boundaries: where the parent starts the CLI, and where the child executes its tools.
+The parent must use its approved host execution facility.
+Disabling the child's sandbox cannot escape an outer sandbox.
+Likewise, starting the CLI on the host does not remove a sandbox selected by the child's flags.
+Codex's `workspace-write` profile therefore must not be the default for these full-access workflows.
+See [Codex non-interactive execution](https://learn.chatgpt.com/docs/non-interactive-mode) and [permissions](https://learn.chatgpt.com/docs/permissions).
+
+| Child | Full-access launch settings |
+| --- | --- |
+| Codex | `--dangerously-bypass-approvals-and-sandbox`, on both launch and resume |
+| Claude Code | `--permission-mode bypassPermissions --settings '{"sandbox":{"enabled":false}}'` |
+| Cursor Agent | `--force --sandbox disabled --trust --approve-mcps` |
+
+Claude's permission mode and Bash sandbox are separate controls.
+Cursor's force flag and sandbox setting are also separate.
+The Cursor MCP flag approves the configured servers for this run.
+These options do not override explicit administrative restrictions or create missing credentials.
+See [Claude permissions](https://code.claude.com/docs/en/permissions), [Claude sandboxing](https://code.claude.com/docs/en/sandboxing), and [Cursor CLI parameters](https://cursor.com/docs/cli/reference/parameters).
+
+Start in the task's actual working directory with the normal user identity, environment, login, settings, skills, plugins, and configured integrations.
+Keep the harness's default system prompt, memory, context, and compaction behavior unless the user chose an override.
+Do not use `env -i`, an artificial home/config directory, `--ignore-user-config`, `--ignore-rules`, `--bare`, `--safe-mode`, `--strict-mcp-config`, or tool allowlists to simplify delegation.
+Do not pass flags that disable skills, session persistence, or otherwise remove normal capabilities.
+Merge necessary per-run settings without discarding unrelated settings.
+
+Normal configuration is each child's own configuration; a CLI does not automatically inherit another product's settings or the parent chat's desktop-only tools.
+Preserve ordinary automatic instruction discovery instead of copying those instructions into the task prompt.
+Do not claim unavailable integrations are present.
+See [Claude headless context loading](https://code.claude.com/docs/en/headless) and [Codex instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+
+Run implementors and reviewers in normal agent mode.
+A reviewer receives a no-repair role instruction, with normal tools available for verification.
+Plan mode changes the deliverable and is not a substitute for review.
+
+### 3. Minimal prompts and explicit skills
+
+Pass the user's task and only missing execution-specific context: task scope, selected reviewer, approved access, ownership, concurrency, and coordination boundaries.
+Include a task document when the user named it.
+Do not append generic requests to read `AGENTS.md`, `CLAUDE.md`, context documents, or conventions the child normally discovers.
+Do not restate routine commit-message or reporting instructions already provided by the user's environment.
+Ask for an extra report field only when the workflow needs it and it is otherwise missing.
+
+When delegating a skill, put the explicit invocation at the beginning of the child's user prompt:
+
+| Child | Prompt form |
+| --- | --- |
+| Codex | `$co-review`, or the path-qualified mention `[$co-review](/absolute/skills/co-review/SKILL.md)` |
+| Claude Code | `/co-review <task and supplied choices>` |
+| Cursor Agent | `/co-review <task and supplied choices>` |
+
+Use the actual registered command for a namespaced plugin skill.
+The skill name is prompt content, not a shell command or a model flag.
+Use a quoted heredoc or correctly quoted argument so the shell does not expand `$co-review` or interpret Markdown.
+Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in `-p` prompts; Cursor documents explicit slash-skill invocation.
+See [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Claude headless skills](https://code.claude.com/docs/en/headless), and [Cursor skills](https://cursor.com/docs/skills).
+
+Before offering an installed skill route, resolve its real entrypoint and confirm it is enabled and usable by the selected child in this working directory.
+Use an existing skill listing when available, then check the relevant normal discovery locations:
+
+| Child | Normal locations to check |
+| --- | --- |
+| Codex | Applicable ancestor `.agents/skills/` directories and `~/.agents/skills/`, plus configured plugin skills |
+| Claude Code | Applicable `.claude/skills/`, `~/.claude/skills/`, and installed plugin skills |
+| Cursor Agent | Applicable `.agents/skills/`, `.cursor/skills/`, their user-level equivalents, and supported compatibility/plugin locations |
+
+Follow symlinks and actual configuration; do not assume a directory exists or a parent-visible skill is registered in every child.
+File existence alone does not prove that a particular CLI version will expand its command.
+If native loading fails, report the failure and use the workflow's embedded alternative.
+Do not install a missing skill, enable a disabled one, or disguise its contents as a workaround.
+
+Forward already approved reviewer settings and access as user decisions.
+Explicit invocation does not itself override permissions; the launch settings establish the authorized access.
+An unattended child returns any genuinely missing decision to its coordinator instead of waiting on an interactive question.
+
+### 4. Run records and ownership
+
+Before creating run artifacts in a Git working tree, establish a local ignore rule:
 
 ```bash
-<CURSOR_CMD> --list-models 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'
-```
-
-The raw output is ANSI-coloured and needs the `sed` filter to be readable.
-Each line is `<slug> - <Display Name>`, and the list is long — roughly ninety entries.
-
-Cursor encodes reasoning effort and speed **in the slug itself**: `cursor-grok-4.6-xhigh-fast` is one model, one effort, one mode.
-There are no separate effort or speed flags. `<CURSOR_CMD> status` reports the logged-in account if you need to distinguish an auth failure from a listing failure.
-
-#### Reading a failure
-
-A listing that reports **not authenticated**, prompts for login, reports **expired credentials**, reports a **quota or usage limit**, exits non-zero, or returns nothing means that harness is out of service.
-Drop it from the candidates and **keep its exact message** — the skill reports it to the user in the §8 menu.
-
-### 3. Selecting model, effort, and speed
-
-|                  | Model                                                    | Reasoning effort                                                               | Fast mode                                                         |
-| ---------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| **Codex**        | `-m <slug>`                                              | `-c 'model_reasoning_effort="<effort>"'` — only a level that model's row lists | `-c 'service_tier="priority"'`; omit the flag entirely for normal |
-| **Claude Code**  | `--model <alias-or-id>`                                  | `--effort low\|medium\|high\|xhigh\|max`                                       | not selectable from the CLI                                       |
-| **Cursor Agent** | `--model <slug>` — effort and speed are part of the slug | in the slug (`-low`/`-medium`/`-high`/`-xhigh`/`-max`)                         | in the slug (`-fast` suffix)                                      |
-
-Two verified traps:
-
-- **Codex's fast tier is `priority`, not `fast`.** That is the `id` the model catalog gives it; `fast` is only its display name. The tier string is not validated locally, so a wrong value fails at request time or is silently ignored rather than erroring.
-- **Claude's `--effort` only applies to models that have effort levels.** Passing `--effort low` together with `--model haiku` did not run Haiku — the run came back attributed to Sonnet 5. Pass `--effort` only with Opus, Sonnet, or Fable; omit it entirely for Haiku.
-
-### 4. Launching a round
-
-#### Always use the parent's managed asynchronous process facility
-
-Child runs routinely outlive a synchronous shell-tool call.
-Submit every launch and resume through the supervising agent's managed long-running process facility, retain the returned task or session handle, and wait on that handle until the process exits.
-Use the exact facility required by the parent guide loaded from the skill entrypoint.
-An unlisted parent must use its native managed background-task or yielded-session facility.
-
-The shell block below remains a foreground command *inside* that managed session so its post-exit extraction runs in order.
-Do not add shell `&`, `nohup`, or a detached subprocess of your own.
-If the parent has no managed asynchronous process facility, stop and explain that this workflow cannot safely run there.
-
-#### The shape
-
-Every launch is the same shape: the prompt arrives as a quoted heredoc on stdin, the transcript goes to `<LOG>`, the final message ends up in `<RESP>`, and the exact resumable session id goes to `<SESSION>`.
-The heredoc avoids every quoting problem an inline prompt creates and leaves no temp file behind.
-
-Before the first launch in a working repository, add `/.agent-runs/` to Git's local exclude file and verify that Git ignores it:
-
-```bash
-agent_runs_exclude_path="$(git rev-parse --git-path info/exclude)" || exit 1
-mkdir -p "$(dirname "$agent_runs_exclude_path")"
-touch "$agent_runs_exclude_path"
-grep -qxF '/.agent-runs/' "$agent_runs_exclude_path" || \
-  printf '\n/.agent-runs/\n' >> "$agent_runs_exclude_path"
-git check-ignore -q --no-index .agent-runs/.ignore-check || {
-  echo "error: .agent-runs/ is not ignored" >&2
+agent_exclude_path="$(git rev-parse --git-path info/exclude)" || exit 1
+mkdir -p "$(dirname "$agent_exclude_path")"
+touch "$agent_exclude_path"
+grep -qxF '/.agent-runs/' "$agent_exclude_path" ||
+  printf '\n/.agent-runs/\n' >> "$agent_exclude_path"
+git check-ignore -q --no-index .agent-runs/.ignore-check || exit 1
+test -z "$(git ls-files -- .agent-runs)" || {
+  echo "Run artifacts are already tracked; resolve that before delegation." >&2
   exit 1
 }
 mkdir -p .agent-runs
 ```
 
-This changes only local Git metadata, not the repository's tracked `.gitignore`.
-If the directory is not a Git working tree or the ignore check fails, stop before launching a harness.
+This changes local Git metadata, not tracked `.gitignore`.
+If the directory is not a Git working tree or run artifacts cannot be kept untracked, stop before launching.
 
-All three run files live in **`.agent-runs/` at the repository root**, after that preflight has made the directory locally ignored.
-Use the same task-and-round stem for `<LOG>` and `<RESP>`, and one stable `.agent-runs/<task>.session` path for `<SESSION>` across every round.
-Never write them to `/tmp`, and never anywhere tracked.
-`<W>` below is the absolute path of the working directory.
+Capture ownership without dumping source into the parent context:
+save `git diff --cached --binary HEAD` and `git diff --binary` as separate files, plus a NUL-safe untracked-file manifest with path, type, and SHA-256 content hash.
+For an unborn repository, use the index-versus-empty-tree baseline instead of `HEAD`.
+Retain content needed for any safe restoration; hashes alone cannot restore a modified untracked file.
+
+Capture the initial baseline before implementation and a review baseline before each reviewer round.
+Preserve pre-existing user work and other agents' changes.
+Only stage, revert, or commit deltas whose ownership is established.
+Never use broad staging such as `git add .` or `git add -A`.
+In concurrent work, keep ownership boundaries and serialize all shared-index changes.
+
+Each task and role gets a unique stem:
+`.agent-runs/<task>-<role>-r1.log`, `...-r1.response.md`, and one stable `.agent-runs/<task>-<role>.session`.
+Use new log/response files for every round and keep nested review artifacts distinct.
+Store artifacts here rather than in `/tmp`; pass prompts directly instead of creating prompt files.
+
+The parent reads only the final response after exit and the one-line session file when resuming.
+Never read or print the streamed log, including for progress or failure diagnosis.
+Only mechanical post-exit extraction of final output, session metadata, or bounded errors may consume it, with output redirected to files.
+
+### 5. Launch and resume
+
+Use the parent's managed asynchronous process facility and retain its handle.
+Keep the shell block attached to that facility; do not add `&`, `nohup`, or an unmanaged detached process.
+If the parent cannot manage the process lifetime, report that limitation.
+Wait on the handle until exit; use it for lifecycle checks and cancellation.
+
+In the examples, set `agent_model`, `agent_effort`, `agent_workspace`, `agent_log`, `agent_response`, and `agent_session` to the chosen values and task-local paths.
+Set the command tool's working directory to `agent_workspace`.
+The snippets use Bash-compatible shell syntax.
+Include the invocation, its post-exit extraction, and exit-status propagation in the same managed shell block.
+For every resume, require a nonempty saved session file and read its exact ID into `agent_session_id`.
+For Claude and Cursor, define `agent_finish_json_round` from the finalizer section inside that shell block before the invocation.
 
 #### Codex
 
 ```bash
-codex_run_status=0
+agent_exit=0
 codex exec \
-  -m <model> \
-  -c 'model_reasoning_effort="<effort>"' \
-  -c 'service_tier="priority"' \
-  --sandbox workspace-write \
-  --json \
-  -o <RESP> \
-  - > <LOG> 2>&1 <<'PROMPTEOF' || codex_run_status=$?
-<the prompt>
-PROMPTEOF
-jq -Rr 'fromjson? | select(.type == "thread.started") | .thread_id // empty' \
-  < <LOG> 2>/dev/null | head -n 1 > <SESSION>
-exit "$codex_run_status"
+  --dangerously-bypass-approvals-and-sandbox \
+  -m "$agent_model" \
+  -c "model_reasoning_effort=\"$agent_effort\"" \
+  --json -o "$agent_response" \
+  - > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<user task, preceded by an explicit skill mention when requested>
+AGENT_PROMPT
+
+if ! test -s "$agent_session"; then
+  jq -Rr 'fromjson? | objects | select(.type == "thread.started") | .thread_id // empty' \
+    "$agent_log" 2>/dev/null | head -n 1 > "$agent_session"
+fi
+exit "$agent_exit"
 ```
 
-Codex writes the final message to `-o` itself, so no extraction step is needed.
-`--json` makes stdout a JSONL event stream; its first `thread.started` event carries the exact resumable `thread_id`.
-The post-exit extractor ignores non-JSON stderr, writes only that id to `<SESSION>`, and preserves the Codex process's exit status.
-The trailing `-` is required for it to read the heredoc from stdin; because the heredoc closes stdin, never add a `< /dev/null` guard as well or the prompt arrives empty.
-Drop the `service_tier` line for normal mode.
-Keep the selected model's default context and compaction settings unless the user explicitly asks to override them and the model catalog confirms the requested values are supported.
+Add `-c 'service_tier="priority"'` only for a selected, supported fast tier.
+Codex writes the final response through `-o`.
+The structured `thread.started.thread_id` identifies this exact child.
+See [Codex exec output](https://learn.chatgpt.com/docs/non-interactive-mode).
 
-Separately, **ask the user** whether to add `-c 'features.memories=false'` any time Codex is chosen as the implementor or reviewer — it disables Codex's cross-session memory for that run. This one is not a default: confirm it in chat before the first launch of a Codex round, and carry the answer for every later round in the same task.
+For later rounds, read the saved ID and replace the invocation with:
+
+```bash
+agent_session_id="$(sed -n '1p' "$agent_session")"
+test -n "$agent_session_id" || exit 1
+agent_exit=0
+codex exec resume \
+  --dangerously-bypass-approvals-and-sandbox \
+  -m "$agent_model" \
+  -c "model_reasoning_effort=\"$agent_effort\"" \
+  --json -o "$agent_response" \
+  "$agent_session_id" - > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<follow-up for this same task>
+AGENT_PROMPT
+exit "$agent_exit"
+```
+
+Repeat the selected speed setting too.
+All flags precede the session ID.
+Do not add `--sandbox` to `exec resume`; the full-access flag above is supported on both forms.
 
 #### Claude Code
 
 ```bash
+agent_exit=0
 claude -p \
-  --model <model> \
-  --effort <effort> \
+  --model "$agent_model" --effort "$agent_effort" \
   --permission-mode bypassPermissions \
+  --settings '{"sandbox":{"enabled":false}}' \
   --output-format stream-json --verbose \
-  --add-dir "<W>" \
-  > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
+  > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<user task, or /co-review followed by the task and supplied choices>
+AGENT_PROMPT
+agent_finish_json_round
+exit "$agent_exit"
 ```
 
-**Never pass `--no-session-persistence`** — it discards the session and makes §6's resume impossible.
+Omit `--effort` for unsupported models.
+If speed was explicitly chosen, merge `"fastMode":true` or `"fastMode":false` into that same settings object as appropriate.
+For resume, add `--resume "$agent_session_id"` after `-p`, retaining all other settings and using new round files.
+Never disable session persistence.
+The working directory controls normal project discovery; `--add-dir` only adds other directories when needed.
+See [Claude CLI flags](https://code.claude.com/docs/en/cli-reference).
 
 #### Cursor Agent
 
 ```bash
-<CURSOR_CMD> -p \
-  --model <model> \
-  -f \
+agent_exit=0
+"$agent_cursor_cmd" -p \
+  --model "$agent_model" \
+  --force --sandbox disabled --trust --approve-mcps \
+  --workspace "$agent_workspace" \
   --output-format stream-json \
-  --workspace "<W>" \
-  > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
+  > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<user task, or /co-review followed by the task and supplied choices>
+AGENT_PROMPT
+agent_finish_json_round
+exit "$agent_exit"
 ```
 
-`-f` (force) is what makes it non-interactive with write access.
+For resume, add `--resume "$agent_session_id"` after `-p`, retaining the exact model variant and all other settings.
+See [Cursor headless execution](https://cursor.com/docs/cli/headless) and [sandbox controls](https://cursor.com/docs/cli/overview).
 
-#### Review posture: normal mode, never plan mode
+#### JSON finalizer for Claude and Cursor
 
-A review must not edit the tree, but **plan mode is not how you get that, on any harness.** Plan mode changes what the agent is _for_: it stops reviewing and starts drafting a proposal for approval, which is a different deliverable than the one the skill asked for. Verified on both CLIs that offer it — Cursor answered a work request with "I'll outline that plan for your approval", and Claude wrote a plan file to `~/.claude/plans/` instead of doing the task. **Never launch a review, or an implementation, in plan mode.**
-
-Run reviews in normal mode, with one exception where a genuine read-only mode exists:
-
-|                  | Review posture                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Codex**        | `--sandbox workspace-write`, exactly as above. The no-edit instruction in the prompt is the guard.           |
-| **Claude Code**  | `--permission-mode bypassPermissions`, exactly as above. The no-edit instruction in the prompt is the guard. |
-| **Cursor Agent** | `--mode ask --trust` in place of `-f`. Genuinely read-only and still runs shell commands.                    |
-
-Cursor's **ask** mode is the one real enforcement available: it ran `ls -1` and reported the count, then refused the file creation outright — _"I can't create h.txt while Ask mode is on (writes are blocked)"_. Prefer it for Cursor reviews. `--trust` is not optional alongside it: Cursor gates an unfamiliar workspace behind a trust prompt that `-f` happens to satisfy but `--mode ask` does not, so without it the run exits non-zero with _"To proceed… Pass --trust, --yolo, or -f if you trust this directory"_ and never reaches the model.
-
-**Do not try to enforce read-only on Claude with `--disallowed-tools`.** Verified: `--disallowed-tools "Edit,Write,NotebookEdit,MultiEdit"` blocked the edit tools and the model simply wrote the file through Bash instead. Denying tools moves the write, it does not prevent it. For Codex and Claude, the prompt instruction plus the caller's separate pre-run and post-run content snapshots are the guard. A `git status --short` comparison alone cannot detect changes to an already-dirty path.
-
-#### Materializing the final response — Claude and Cursor only
-
-Neither CLI has Codex's `-o`. Once the process has exited, mechanically transform the last result record into `<RESP>` with **all output redirected to that file**:
+Define this shell function before the Claude or Cursor invocation and call it only after that CLI exits.
+It is a local shell helper, not an installed command.
+It extracts the terminal report and session metadata without exposing the transcript:
 
 ```bash
-grep '"type":"result"' <LOG> \
-  | tail -n 1 \
-  | jq -r '"SESSION_ID: \(.session_id // "")\nIS_ERROR: \(.is_error // false)\nSUBTYPE: \(.subtype // "")\nAPI_ERROR_STATUS: \(.api_error_status // "")\n\n\(.result // empty)"' \
-  > <RESP>
-sed -n 's/^SESSION_ID: //p' <RESP> | head -n 1 > <SESSION>
-```
+agent_finish_json_round() {
+jq -Rsr --argjson code "$agent_exit" '
+  [split("\n")[] | fromjson? | objects] as $events
+  | ([$events[] | select(.type == "result")] | last) as $r
+  | ([$events[] | select(.type == "system" and .subtype == "init")] | first) as $init
+  | "RUN_STATUS: \(if $code == 0 and $r != null and $r.is_error != true
+                       and $r.subtype == "success"
+                       and (($r.result // "") | length) > 0
+                    then "COMPLETED" else "FAILED" end)\n"
+    + "SESSION_ID: \($r.session_id // $init.session_id // "")\n"
+    + "MODEL: \($init.model // "")\n"
+    + "SUBTYPE: \($r.subtype // "")\n"
+    + "API_ERROR_STATUS: \($r.api_error_status // "")\n\n"
+    + ($r.result // "No terminal report; use bounded failure extraction.")
+' "$agent_log" > "$agent_response" 2>/dev/null
 
-This is a mechanical file-to-file extraction, not permission for the parent agent to inspect `<LOG>`. The command must not print any transcript-derived byte to the tool result or parent context.
-
-Claude's `.result` is the final assistant message alone.
-**Cursor's `.result` is every assistant message of the turn concatenated**, so its narration arrives along with its conclusion — still far cheaper than the transcript, but do not mistake the leading sentences for the deliverable.
-
-### 5. The three files, and the two you are allowed to read
-
-- **`<RESP>` — the compact control header plus final message. This is the only transcript-bearing agent-run file the parent ever reads or prints.**
-- **`<SESSION>` — one exact session id and nothing else.** The parent may read it only to resume the same task.
-- **`<LOG>` — the streamed transcript.** Written continuously while the run is alive. **The parent never reads or prints this file.** Not with Read, `cat`, `head`, `tail`, `grep` that writes to stdout, or any tool call whose result enters the parent context; not whole, not in part, not while it runs, not after it exits, and not even for failure diagnosis.
-
-The `<LOG>` holds the harness's entire intermediate reasoning — every tool call, every file it opened, every thought it discarded. It is routinely tens of thousands of tokens, and pouring it into your context is the exact cost these skills exist to avoid. A run that succeeded has already told you everything it concluded, in `<RESP>`. Reading the transcript on top of that buys nothing and can cost more context than the entire task it was supervising.
-
-The only permitted contact with `<LOG>` is a post-exit shell transformation whose stdout and stderr are fully redirected into `<RESP>`, or the metadata-only extraction of `thread.started.thread_id` into `<SESSION>`.
-The parent then reads `<RESP>` and, only when resuming, `<SESSION>`.
-There is no diagnostic exception and no fallback tail.
-
-### 6. Resuming the same session
-
-Every later round goes back to the **same session**; a fresh launch throws away the context that makes iteration cheaper than a restart.
-
-Every round reads the exact id captured during round 1 from its task-local `<SESSION>` file.
-Never discover a Codex session by newest modification time, global `--last`, or the parent process's `CODEX_THREAD_ID`: concurrent Codex activity can make all three identify the wrong thread.
-
-```bash
-test -s <SESSION>
-session_id=$(sed -n '1p' <SESSION>)
-```
-
-For a legacy Codex run that predates `<SESSION>`, correlate the task log's **birth/creation time** with rollout files created in the same launch window, then save the matched filename id to `<SESSION>` before resuming.
-Never fall back to the globally newest modified rollout unless you have proved no other Codex activity occurred.
-
-```bash
-# Codex — every flag BEFORE the session id; `resume` rejects --sandbox
-codex exec resume \
-  -m <model> \
-  -c 'model_reasoning_effort="<effort>"' \
-  -c 'service_tier="priority"' \
-  -c 'sandbox_mode="workspace-write"' \
-  --json \
-  -o <RESP> \
-  "$session_id" - > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
-
-# Claude Code — same flags as the launch, plus --resume
-claude -p --resume <session-id> --model <model> ... > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
-
-# Cursor Agent — same flags as the launch, plus --resume
-<CURSOR_CMD> -p --resume <session-id> --model <model> ... > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
-```
-
-All three keep the same session id across rounds, so the id captured after round 1 stays valid for the whole task.
-If the exact id is unrecoverable, stop and report that fact rather than guessing with `--last`.
-
-Resume rounds use the same parent-managed asynchronous process facility. Every word of §4's launch rule applies to every round.
-
-### 7. Failure signatures, materialized into the response file
-
-Read the exit status first; a `<RESP>` that is empty or missing means the same thing.
-
-|                  | Signature of a dead run                                                                                                                                                                                                                                                     |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Codex**        | Non-zero exit; the transcript ends in `{"type":"error","message":…}` and `{"type":"turn.failed",…}`. A usage-limit block reads _"You've hit your usage limit… try again at &lt;date&gt;"_ and, as noted in §2, is invisible to `codex debug models` — it appears only here. |
-| **Claude Code**  | Non-zero exit, or a result record with `"is_error":true`; `.subtype` and `.api_error_status` name the cause.                                                                                                                                                                |
-| **Cursor Agent** | Non-zero exit, or no `"type":"result"` record in the stream at all. An untrusted workspace fails this way, asking for `--trust`, `--yolo`, or `-f`.                                                                                                                         |
-
-When a run dies and normal response materialization left `<RESP>` empty, mechanically extract a bounded diagnostic **into `<RESP>`**. These commands must not emit transcript-derived output to the parent context:
-
-```bash
-# Codex
-{
-  printf 'RUN_FAILED\n'
-  jq -Rr '
-    fromjson?
-    | select(.type == "error" or .type == "turn.failed")
-    | .message // (if (.error | type) == "object" then .error.message else .error end) // empty
-  ' <LOG> 2>/dev/null | tail -n 3
-} > <RESP>
-
-# Only if this round emitted no thread.started event, so no agent transcript started:
-if test "$(wc -l < <RESP>)" -eq 1 \
-  && ! jq -Re 'fromjson? | select(.type == "thread.started") | .thread_id' <LOG> >/dev/null 2>&1; then
-  {
-    printf 'RUN_FAILED\n'
-    sed $'s/\\033\\[[0-9;]*[a-zA-Z]//g' <LOG> \
-      | awk 'NF && $0 !~ /^[[:space:]]*\\{/ { lines[++n] = substr($0, 1, 500) } END { first = n > 3 ? n - 2 : 1; for (i = first; i <= n; i++) print lines[i] }'
-  } > <RESP>
+if ! test -s "$agent_session"; then
+  sed -n 's/^SESSION_ID: //p' "$agent_response" | head -n 1 > "$agent_session"
 fi
-
-# Claude Code
-{
-  printf 'RUN_FAILED\n'
-  grep -o '"result":"[^"]*"' <LOG> | tail -n 1
-} > <RESP>
-
-# Cursor Agent
-{
-  printf 'RUN_FAILED\n'
-  grep -o '"error"[^,]*' <LOG> | tail -n 3
-} > <RESP>
+}
 ```
 
-Then read `<RESP>`, never `<LOG>`. If the bounded extractor finds nothing, report `RUN_FAILED` with no structured diagnostic and offer the fallback harness. **Never tail the transcript.** Missing diagnostics are preferable to polluting the parent context with an unbounded agent trace.
+A `FAILED` header is a failed run even if the CLI exited zero.
+A successful process report can still describe a blocked or incomplete task; inspect its meaning.
+Claude's terminal result is its final report; Cursor's result can concatenate assistant text from the turn.
+See [Cursor output format](https://cursor.com/docs/cli/reference/output-format).
 
-Kill a wedged run by matching the harness and the slug:
+Never replace a saved session ID with a different returned ID.
+Use that exact task-local ID for every continuation; never use `--last`, `--continue`, file modification order, or the parent's session ID.
+If no exact ID can be recovered from this task's own structured metadata, report that fact rather than guessing.
+
+### 6. Failure and recovery
+
+A non-zero exit, missing final response, materialized error, or missing required terminal result is a process failure.
+Keep failure reporting separate from a successful process that asks a task-level question.
+
+For failures without a useful final diagnostic, mechanically extract only explicit error records into a new response file:
 
 ```bash
-pkill -f 'codex exec.*<slug>'
-pkill -f 'claude .*<slug>'
-pkill -f '<CURSOR_CMD> .*<slug>'
+jq -Rsr '
+  [split("\n")[] | fromjson? | objects
+   | select(.type == "error" or .type == "turn.failed"
+            or (.type == "result" and .is_error == true))
+   | (.message // (if (.error | type) == "object" then .error.message else .error end)
+      // .result // .errors // empty)
+   | if type == "string" then . else tojson end]
+  | "RUN_FAILED\n" + (.[-3:] | join("\n") | .[0:2000])
+' "$agent_log" > "$agent_response" 2>/dev/null
 ```
 
-### 8. The model menu, as the user sees it
+Keep an existing final report intact when it is useful; use a separate round-specific failure-response path in that case.
+For a startup failure with no structured agent events, a bounded file-to-file extraction of the CLI's plain error is also acceptable.
+If no diagnostic is available, report the exit status and missing diagnostic.
+Do not inspect or tail the transcript.
 
-The listings are your reference, not the user's.
-Show **display names only** — no slugs, no effort suffixes, no table, no commentary about how you obtained them.
+Correct an accidental launch restriction to the already-authorized full-access settings and resume the same task without asking for permission again.
+For a parent tool that prematurely ended the process, retry once through its proper managed asynchronous facility.
+A transient capacity failure permits one short delayed retry.
+Do not retry quota, authentication, policy, or repeated capacity failures in a loop.
 
-Format it so the three things the user has to choose are unmissable:
+Report the actual blocker and current work.
+Offer another available harness before offering to take over yourself, and wait for authorization to change the selected harness or role.
+A new harness requires a fresh task brief; the previous harness's session ID is not portable.
+An enforced denial is not a reason to clear security settings or bypass a host control.
 
-```
-Pick a harness and model:
+In orchestration, stop new launches and settle already-active work before presenting blockers.
+Preserve completed implementation, review ledgers, and resumable sessions.
+Cancel through the managed handle or a verified task-specific process ID; do not use a broad name-based kill.
 
-🤖 **Codex** — GPT-5.6 Sol · GPT-5.6 Terra · GPT-5.6 Luna · GPT-5.5 · GPT-5.4
-🖱️ **Cursor** — Cursor Grok 4.6 · Composer 2.5 · Claude Opus 5 / Sonnet 5 / Fable 5 · GPT-5.6 Sol / Luna · Kimi K3 · GLM 5.2
+## Review protocol
 
-⛔ **Claude Code** — unavailable: out of usage limits until Aug 20
+Use this protocol when assessing an implementation, plan, or other task output.
+The skill assigns the roles and the completion rule:
 
-Then tell me:
+| Workflow | Author | Reviewer | Coordinator | Completion |
+| --- | --- | --- | --- | --- |
+| co-implement | Child implementor | Parent | Parent | Supervisor sign-off |
+| co-review | Parent | Child reviewer | Parent | Mutual agreement |
+| orchestrate, relayed review | Child implementor | Child reviewer | Orchestrator | Mutual agreement |
+| orchestrate, delegated co-review | Original implementor running co-review | Its child reviewer | Orchestrator tracks completion | Mutual agreement |
 
-  1️⃣  **Model** — any name above
-  2️⃣  **Reasoning effort** — `low` · `medium` · `high` · `xhigh` · `max`
-  3️⃣  **Speed** — ⚡ `fast` or 🐢 `normal`
+The author owns fixes.
+The reviewer independently assesses the work.
+A coordinator that is neither author nor reviewer routes their reports and tracks resolution without deciding technical findings itself.
 
-⭐ **Recommended:** Codex · GPT-5.6 Luna · `xhigh` · ⚡ fast
-```
+### Review brief
 
-Rules for filling that template in:
+Give the reviewer the task, its constraints, the task-owned changed-file list, and the author's completion report when available.
+Include task or specification paths supplied by the user; preserve their scope.
+Treat the completion report as claims to check against the actual work.
+Do not seed the review with the coordinator's suspicions or copy instructions the child normally loads.
 
-- **One line per available harness**, with the ⛔ line repeated for each harness that dropped out, naming the actual reason in a few words.
-- **Cursor lists around ninety entries and dumping them is useless.** Shortlist the prominent families only — **Cursor Grok, Composer, the latest Claude, the latest GPT, the latest Kimi, the latest GLM** — collapsing each family's effort and speed variants into one name.
-- **Offer only effort levels the shortlisted models actually support**, and say so if the user's pick narrows them.
-- **Say when speed is not a choice.** Claude Code has no fast mode, and Codex's `gpt-5.4-mini` has no fast tier; do not offer a knob that does not exist for the model in hand.
-- **One line of justification for the recommendation, at most.** "Quick, strong, and very cheap" is enough.
+Add only these review-specific instructions:
 
-The user picks conversationally — "sol on high", "the fast one", "grok, cheap and quick".
-You hold the full listing, so you translate that into the exact slug and flags from §3; do not make them read a slug.
-Answer any follow-up about what else is available from the listing you already have.
+- Inspect the actual work and relevant dependencies against the task's requirements.
+- Report defects, missing requirements, regressions, and unsupported completion claims.
+- Do not repair the work, edit task definitions or tracking, or stage or commit.
+- Give numbered findings with location, consequence, evidence, and what would resolve the issue.
+- Separate blocking defects from judgment calls.
+- State when no findings remain.
+- Assess rebuttals independently and explicitly accept a convincing correction.
+
+Both participants may use the harness's normal tools and authorized services to gather evidence.
+Review is a role restriction, not a reason to remove shell, network, database, or browser capabilities.
+Run checks appropriate to the work; documentation-only work does not call for code tests.
+
+### Evidence and responses
+
+Neither participant treats the other's report as proof.
+Read the relevant work, reproduce claimed failures when practical, and distinguish observations from inferences.
+Consider skipped requirements, integration behavior, error paths, and unintended scope changes.
+Avoid speculative findings or changes justified only by personal taste.
+
+For each finding, the author chooses one response:
+
+| Response | Required action |
+| --- | --- |
+| Confirmed | Fix it and report the change and verification |
+| Rejected | Give evidence explaining why the finding is incorrect |
+| Judgment call | State the chosen approach and its trade-off |
+
+Invite pushback in both directions.
+Accept the stronger evidence, regardless of which agent supplied it.
+A finding's severity does not determine whether it has been resolved.
+
+### Mutual-agreement loop
+
+Use this loop for co-review and every orchestration review.
+Keep stable finding IDs and a compact ledger with these states:
+
+- `open`
+- `fixed-awaiting-review`
+- `rebutted-awaiting-response`
+- `closed-both-agreed`
+
+1. The reviewer returns its findings.
+2. The author verifies each finding, makes the fixes it accepts, and answers every item.
+3. Send the updated ledger and the author's response to the same reviewer session.
+   Include all edits since its last review, including changes it did not request.
+4. The reviewer inspects the current work, checks the fixes for regressions, and explicitly closes or contests each item by ID.
+5. Return any contested or new findings to the same author session and repeat.
+
+Preserve both session IDs throughout the exchange.
+When a coordinator relays messages, pass the participants' final reports and evidence faithfully; do not substitute the coordinator's technical verdict.
+Compact repeated history into the ledger, but retain unresolved arguments and evidence.
+
+Every edit after a review requires another review of the affected final state.
+A rejection remains open until the reviewer explicitly accepts the rebuttal.
+Silence, a lower severity, or a general "no blockers" statement does not close an unaddressed item.
+Retain mutually closed items with their resolution so they do not disappear from the record.
+
+Completion requires every item to be `closed-both-agreed`, the author's acceptance of the final disposition, and a reviewer verdict covering the final task state.
+A clean first review that the author verifies and accepts needs no extra round.
+If another task changes a relevant dependency after sign-off, recheck the affected conclusions before treating them as final.
+
+### Supervisor sign-off
+
+For co-implement, the parent reviewer independently checks the task-owned diff and completion claims.
+Send substantive defects and contestable choices back to the same implementor session.
+Re-review its subsequent changes until no blocking issue remains.
+
+The supervisor may directly fix an obvious, uncontested mistake.
+If that clears the last issue, verify and sign off without another delegate round.
+If another round is needed, tell the implementor what the supervisor changed.
+This exception does not apply to the mutual-agreement loop.
+
+### Protect ownership during review
+
+Use the content baselines and ownership rules in the harness reference.
+The author pauses edits to the reviewed task while its reviewer runs.
+Independent tasks may continue only where their files and mutable resources do not conflict with that review.
+
+After review, check for unintended changes to the reviewed work.
+In a shared checkout, other agents' expected changes are not reviewer edits.
+Never restore a repository-wide snapshot over concurrent work.
+Undo only a delta proven to belong to the reviewer; if ownership cannot be established, preserve the files and resolve the conflict before continuing.
+
+In a single-writer workflow, stage only reviewed task-owned hunks when that gives the next round a useful diff boundary.
+Leave mixed-ownership paths unstaged when separation is uncertain.
+During parallel work, keep the shared index unchanged until the coordinator grants a serialized staging or commit turn.
+
+### Decisions and close-out
+
+Continue technical discussion autonomously while the participants are making progress.
+Ask the user only for a requirement, scope, or consequential product decision the task does not answer, or a disagreement the participants cannot reconcile with evidence.
+Present both positions and the remaining question; preserve the sessions for resumption.
+Do not call an unresolved exchange complete.
+
+Report the outcome, accepted fixes, accepted rebuttals, checks actually performed, and any remaining limitation.
+For mutual-agreement reviews, include the final ledger and both participants' explicit disposition.
+Keep reports concise and reference the final response files rather than streamed transcripts.
