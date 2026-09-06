@@ -1,102 +1,188 @@
 ---
 name: orchestrate
-description: Orchestrate a series of tasks by delegating them to child coding-agent CLIs (Codex, Claude Code, or Cursor Agent), as an ordered queue or as user-approved parallel waves, stopping at the user's chosen boundaries. Use when the user wants a numbered list of tasks, plan sessions, or steps executed by child harnesses while this agent supervises, logs, and coordinates commits. Not for a single supervised implementation or review.
+description: Run an existing task series through Codex, Claude Code, or Cursor Agent with an approved dependency schedule, optional parallel execution, per-task reviewers, and coordinated review and commit completion.
 ---
 
-# Orchestrating a series of delegated tasks
+# Coordinate a task series
 
-You are the **orchestrator**, not the implementer and not the reviewer.
-Child coding-agent CLIs do every task; you launch them, wait on their managed process handles, record what they reported, keep any task-tracking file honest, coordinate task-owned commits, and move through the approved schedule — pausing at the user's chosen boundaries.
+You coordinate execution, review exchanges, tracking, and authorized commits.
+Child agents implement and review.
+Do not study implementation source or decide technical findings yourself.
+Use task definitions, dependency information, ownership metadata, tracking files, and final agent reports.
 
-This workflow is deliberately narrow: you do not review the delegate's work, push back on it, or iterate against acceptance criteria.
-You trust the delegate's own report.
-If the user wants a supervised, argued-over implementation of one task, use a dedicated single-task supervision workflow instead.
-This skill is for **running a queue**.
+Read the [harness reference](#harness-cli-reference) before running children and the [review protocol](#review-protocol) for reviewed tasks.
+Read only the adjacent parent guide matching the agent that loaded this skill: `codex.md`, `claude.md`, or `cursor.md`.
+For another parent, use its native managed asynchronous process facility.
 
-Before gathering the queue, identify which agent loaded this skill.
-If it is one of the three listed parents, read exactly one adjacent guide:
+## 1. Agree on the run
 
-- Codex reads `codex.md`.
-- Claude Code reads `claude.md`.
-- Cursor reads `cursor.md`.
+Use the user's request and task documents to enumerate the series without redefining its tasks.
+Resolve only missing decisions:
 
-If none of those describes the loading agent, do not read an unrelated guide.
-Use the shared constraints and the loading agent's native managed asynchronous process facility.
-That guide governs the supervising parent agent only.
-Commands and flags for a selected child harness remain in the embedded harness CLI reference, even when the child happens to use the same product name as one of the guides.
+- Tasks, dependencies, and any shared files or mutable resources.
+- Implementor harness and model, including per-task overrides when requested.
+- Review coverage and reviewer harness/model for each reviewed task.
+- Execution order and which independent tasks may overlap.
+- Batch boundaries and whether to commit after each completed task.
+- Existing tracking and outcome-log conventions, and how to use delegates' commit suggestions.
 
-All child-harness command forms — launch, resume, model listing, review posture, and failure signatures — live in the [embedded harness CLI reference](#harness-cli-reference).
-**Read that section before launching anything**, and take every child command from it verbatim rather than from memory.
+Use the harness reference's discovery and model-selection instructions.
+Retain selections and full-access authorization already provided.
+Do not add a separate memory-settings question; preserve each harness's normal configuration unless the user requests a change.
 
-## 1. Gather the task series and the operating parameters
+**Ask about reviews unless the user explicitly declined them.**
+Support reviewing all tasks, selected tasks, or none, with different reviewers for different tasks.
+Do not treat an omitted reviewer assignment as permission to skip review.
+A review explicitly requested for a group or the combined result is its own checkpoint with a defined subject and dependencies.
 
-Before running anything, get four things from the user — ask for whichever aren't already given:
+**Propose parallel execution when independence is plausible, and obtain approval for the concrete schedule.**
+Consider shared edits, generated output, test databases, ports, and other mutable resources, not just task numbering.
+Serialize conflicting phases or use separate resources already supported by the project.
+When independence is uncertain, use sequential execution.
 
-1. **What the tasks are and how they relate.** The user may provide a list, a range of numbered items, a set of files (e.g. session files in a plan folder), or a description you can enumerate yourself once. Make a best effort to understand the requested series from that context and the task or plan files without reading implementation source. Enumerate the full task list back to the user before starting if it was implicit (a range, a folder glob) rather than named explicitly — an orchestrator that silently miscounts the queue is worse than one that asks. Identify explicit dependencies, shared ownership, and ordering constraints. If it is obvious that some tasks are independent and safe to run concurrently, propose the concrete schedule and ask the user to approve parallel execution before launching it. For example: "I can run Sessions 1–9 in parallel, wait for all of them to finish, then run Sessions 10 and 11 sequentially because they depend on that work. Would you like me to proceed that way?" If parallel safety is unclear, the user does not approve it, or the user explicitly requested sequential execution, keep the series sequential.
-2. **The harness and model.** Follow the embedded harness CLI reference §1–3 and §8 to find installed harnesses, list their models, and present the menu. Skip the menu if the user already named a harness and model. If the chosen harness is **Codex**, ask once whether to add `-c 'features.memories=false'` (see the note in that reference) and reuse that answer for every task in the run.
-3. **Batch size — how many tasks to run before stopping for confirmation.** Ask directly: "How many tasks at a time before I stop for your OK?" Do not assume 1, 3, or "all of them." A user asking to run "the rest" or naming an explicit range without a batch size is choosing to run that whole range without stopping — that is a valid answer, not a gap to fill in. For an approved parallel schedule, treat each parallel wave as indivisible and confirm the next boundary after the whole wave settles.
-4. **Whether to commit after each task**, and if so, whether there's a repo convention to follow for commit messages (check `CLAUDE.md`/`AGENTS.md` at the repo root — e.g. a required body, a forbidden co-author trailer). Most delegates will suggest a commit message in their final report; confirm whether to use it verbatim or adapt it.
+Ask for a batch size only when the requested stopping boundary is missing.
+"The rest" or an explicit range without intermediate stops means the entire requested range.
+An approved concurrent batch must settle all its active task and review sessions before its confirmation boundary.
 
-If the task series has its own **state-tracking convention** — a status table, a `READY`/`WIP`/`DONE`-style column, a progress log the delegate is expected to update as part of doing the task — get that convention from the user or from the series' own instructions now, not per-task. You will re-verify it after every single task in section 3.
+## 2. Select the review route
 
-## 2. Scope discipline
+For each reviewed task, check whether its implementor can invoke an installed, enabled `co-review` skill using the harness reference's discovery and invocation rules.
+Check the actual child environment; a skill visible to the orchestrator alone is insufficient.
+Do not install, rebuild, or reconfigure skills to make this route available.
 
-**Do not read source files the tasks touch.** Your job is to launch, wait, and record — not to audit the implementation. Reading into the target codebase defeats the reason this skill delegates in the first place: it burns the exact context budget the delegate's fresh process exists to spare you.
+When usable, **prefer resuming the original implementor with co-review**.
+Tell the user that the implementor will run its selected reviewer and resolve the findings itself.
+Show this route in the plan table.
+The implementor keeps its task context and owns every fix.
 
-The only files you read directly are:
+Otherwise use **orchestrator-mediated review**.
+Launch a separate reviewer, send it the implementor's final report and the review brief, and relay the exchange yourself.
+Both routes use the shared mutual-agreement protocol and the user's selected reviewer.
+Honor an explicit route preference.
 
-- The task's own definition (a session file, a numbered list item, a task description) — enough to write the prompt.
-- Any state-tracking file named in section 1, to confirm it was updated correctly.
-- `<RESP>` files, per the embedded harness CLI reference §5 — never `<LOG>`.
+For a combined review, identify the author session responsible for responding and making any cross-task fixes before starting that checkpoint.
+Do not let two author sessions make competing integration fixes.
 
-## 3. Sequential execution
+## 3. Present the plan and get confirmation
 
-For each task in the current batch, in order:
+Present a readable Markdown table using actual task names and selected model display names.
+For example:
 
-1. **Baseline and launch.** Run the embedded harness CLI reference §4's local-ignore preflight before each task, then capture three separate ownership artifacts under `.agent-runs/`: `git diff --cached --binary HEAD`, `git diff --binary`, and a null-safe manifest containing the path, file type, and SHA-256 content hash of every untracked file. Build the prompt from the task's own file or description — keep it short and point at the file path rather than restating its contents; a well-authored task file (a plan session, a ticket) is written to be self-sufficient for a fresh-context agent. Tell the delegate to read and follow any applicable `AGENTS.md` and `CLAUDE.md` files, because the harnesses do not auto-load the same instruction filenames. Do not add scope, acceptance criteria, or other instructions of your own — the task defines its own done-ness. Launch through the embedded harness CLI reference §4's parent-managed asynchronous facility, writing `<RESP>`/`<LOG>` under `.agent-runs/` at the repo root.
-2. **Wait on the managed handle.** Do not do other work, read other files, or start the next task while one is running. Use the parent-specific wait operation from the adjacent guide you loaded until the process exits.
-3. **Read only `<RESP>` plus the one-line `<SESSION>` metadata when resuming.** Never touch `<LOG>` — not even on failure; the embedded harness CLI reference §7 has the bounded failure extraction for that case.
-4. **If the task signals it is blocked** — waiting on missing information, a decision only the user can make, credentials, access it doesn't have — stop the batch immediately, even mid-batch. Print the delegate's blocking question verbatim to the user, wait for their answer, then **resume the same harness session** (embedded harness CLI reference §6) with that answer. Do not skip ahead to the next task while one is blocked, and do not answer on the user's behalf.
-5. **Verify the state-tracking convention**, if one applies. Check the file(s) the delegate was supposed to update. If it correctly reflects the task as complete (and unblocks whatever it was supposed to unblock), proceed. **If it did not update correctly, resume the same session** and ask it to fix the tracking state before moving on — don't edit the tracking file yourself and don't silently continue with a stale state, and don't launch a fresh session to do another agent's bookkeeping.
-6. **Log the outcome.** Distill `<RESP>` into a short per-task record: what was implemented (without the commit-message boilerplate, which belongs in the commit itself) and any verification/testing steps the user should run. Write it wherever the user asked in section 1, or propose a sensible default (e.g. a `.dev/`-style log directory) if they didn't say.
-7. **Commit**, if section 1 said to. Compare the completed tree with that task's ownership baseline, then stage only paths and hunks proven to belong to the completed task, preserving any pre-existing user work. Commit with the delegate's suggested message (verbatim or adapted per the user's convention from section 1). Never use `git add -A` or `git add .`. The local-ignore preflight in the embedded harness CLI reference §4 must already protect `.agent-runs/`; attempts to add it should be treated as a no-op, not an error.
-8. **Report the task and move on.** A short status line is enough per task; save the fuller readout for the batch summary in section 5.
+| Order / ready condition | Task | Depends on | Implementor | Reviewer | Review route |
+| --- | --- | --- | --- | --- | --- |
+| Start together ∥ | Task A | — | Selected model | Selected reviewer | co-review |
+| Start together ∥ | Task B | — | Selected model | None, as requested | — |
+| After A is done | Task C | A | Selected model | Different reviewer | Relayed |
 
-## 4. User-approved parallel execution
+Below it, state the batch stopping points, commit policy, and full host access for the run, resumes, and nested reviews.
+Explain any shared-resource phases that must run sequentially.
+Ask for confirmation before the first launch.
+Reuse approval of this exact plan rather than asking again.
 
-Use parallel execution only for the exact independent wave the user approved.
-Before launching the wave, capture the ownership artifacts from section 3 for every task against the same pre-wave tree state.
-Launch one implementor session per task through the parent-managed asynchronous facility.
-In every parallel implementor prompt, say that other agents are working concurrently in the same repository or folder, so unrelated changes may appear while it works; those changes are expected, must not be treated as corruption or reverted, and must not be staged or committed.
+## 4. Execute the approved schedule
 
-Listen for all running task handles rather than waiting for only one predetermined task.
-As each implementor finishes, read its `<RESP>`, record its result, and keep listening until every already-launched task has finished, failed, or reported a blocker.
-Do not start a dependent wave until every prerequisite task has completed successfully and any required task-owned commit exists.
+Maintain a compact record per task:
 
-If commits are enabled for the run, ask each finished implementor — by resuming that same harness session — to commit **only its own changes** using its suggested commit message, adapted only for the repository convention agreed in section 1.
-Serialize these commit follow-ups so parallel sessions never race over the shared Git index.
-The resumed implementor must compare against its pre-wave ownership baseline, exclude pre-existing and concurrent-agent changes, avoid `git add -A` and `git add .`, and report the resulting commit hash.
-The orchestrator must not take over a parallel task's commit merely because its implementor has already returned once.
+- Task scope, dependencies, file/resource ownership, and selected settings.
+- Implementor session ID and, when applicable, reviewer session ID.
+- Review route, round, finding ledger or delegated review report, and response paths.
+- State: `waiting`, `implementing`, `reviewing`, `fixing`, `finalizing`, `done`, `blocked`, or `failed`.
 
-If one parallel task is blocked or fails, stop launching new work but continue listening for and recording every task that is already running.
-Present the blocker or failure after the active wave settles, and do not launch dependent work.
+Before a launch, capture the harness reference's ownership baseline.
+For tasks launched together, use the same initial batch boundary and record each task's ownership.
+Give each task and role separate run files.
 
-## 5. Batch boundaries
+Build a minimal prompt from the user's task or its definition.
+Add only decisions needed for this execution: its review assignment, ownership, shared-resource coordination, and commit timing.
+Do not repeat automatically loaded agent instructions, ask it to read generic context documents, or restate routine reporting conventions.
 
-After completing the number of sequential tasks the user set in section 1, or after an approved parallel wave settles:
+For concurrent work, include this brief instruction:
 
-- Print a consolidated summary: one line per task (what it was, DONE/blocked/failed), a pointer to the per-task logs, and any cross-cutting issue you had to intervene on (like a stale tracking state you had to ask a session to fix).
-- State what the next task in the queue is.
-- **Stop and wait for the user to say "continue"** before launching anything further. Do not pre-launch the next batch's first task speculatively while waiting.
+> Other tasks are running in this checkout.
+> Unrelated changes are expected; leave them intact and do not stage or commit them.
+> Stay within this task's ownership and report an overlap so the conflicting phase can be serialized.
 
-If the user says "continue," follow the approved schedule for the next sequential batch or parallel wave, unless they change the schedule, batch size, or remaining scope.
+Keep shared tracking writes and Git index operations serialized too.
+The implementor must wait for its commit turn even if its normal task instructions suggest committing immediately.
 
-## 6. Failures
+Launch ready tasks through the parent's managed asynchronous facility.
+Listen to all active handles and process results as they arrive.
+Do not inspect streamed transcripts or read implementation source while waiting.
 
-A task that fails outright (the embedded harness CLI reference §7's dead-run signatures) is not the same as a task that reports being blocked. Materialize the bounded diagnostic into `<RESP>` per §7, report it to the user with the exact failure signature, and stop the batch — don't retry the same launch speculatively, and don't silently skip to the next task in the queue.
+A task enters review as soon as its implementor finishes, while independent tasks continue.
+Keep its author from editing the reviewed work during a reviewer round.
+A dependent task becomes ready only after its prerequisites have completed their assigned reviews, tracking, and required commits.
+No-review tasks proceed directly to finalization.
 
-## 7. What this skill is not
+## 5. Run the assigned review
 
-- Not a reviewer. If the user wants the delegate's work checked against acceptance criteria and pushed back on, use a dedicated supervised implementation or review workflow.
-- Not a planner. It runs a task series someone already wrote; it does not decide what the tasks should be. Inferring and proposing an execution schedule from obvious dependencies is orchestration, not permission to redefine the tasks.
-- Not an editor of the tasks themselves. If a task's own file is wrong or stale, surface that to the user rather than correcting it yourself mid-run, unless the user has explicitly asked you to also maintain that content.
+### Preferred route: implementor-managed co-review
+
+Resume the original implementor with the harness's explicit skill invocation.
+Pass the selected reviewer harness/model/effort/speed, task scope, and the approved execution constraints.
+Carry forward the run's full host authorization and any concurrency or commit restrictions.
+These are supplied user decisions, so the child must not ask the user to choose them again.
+
+The implementor runs co-review, owns the fixes and rebuttals, and returns the final mutual-agreement report.
+Keep the task in `reviewing` or `fixing` until the report accounts for every finding and confirms review of the final work.
+A report that merely says "implemented" or "no blockers" without settling open items is incomplete; resume the implementor to finish the exchange.
+
+If co-review cannot be loaded, retain the implementation and switch to the embedded relayed route with the same reviewer selection.
+Report the route change briefly.
+A harness, model, access, or quota failure follows the failure rules instead; changing routes must not bypass that failure.
+
+### Fallback route: relay the review exchange
+
+Launch the selected reviewer with the shared protocol's brief and reviewer instructions.
+Include the implementor's original final response as claims to verify, the task definition, and its ownership boundary.
+The reviewer has full evidence-gathering access but does not repair the work.
+
+After the reviewer exits:
+
+1. Send its findings and evidence to the same implementor session.
+   Ask for a response to every finding, accepted fixes, evidence for rebuttals, and a list of changes.
+2. Update the ledger from the implementor's response.
+3. Resume the same reviewer with that response and the ledger.
+   Require review of the affected final state and an explicit disposition for each item.
+4. Relay contested or new items back to the implementor and continue.
+
+Send even a clean initial review to the implementor for acceptance.
+If it accepts without changing the work, no extra reviewer round is needed.
+Any further edit to the reviewed work requires another reviewer round.
+
+You coordinate agreement; you do not decide that a finding is wrong, make a fix, or close an unanswered item yourself.
+Finish only when the shared mutual-agreement completion conditions hold.
+
+## 6. Finalize a task
+
+Confirm required implementation and review reports are complete before marking the task done.
+Verify its state-tracking convention.
+If tracking is missing or wrong, resume the same implementor to correct it; do not silently advance or edit its task content yourself.
+Bookkeeping outside the review subject may follow sign-off; changes to reviewed work require re-review.
+
+Write a concise outcome record in the agreed location: what completed, review disposition, response paths, and any remaining verification or user action.
+Distinguish verified review conclusions from an unreviewed implementor's own report.
+
+If commits were approved, commit only after the task's review is resolved.
+For sequential work, stage and commit only changes proven to belong to that task.
+For concurrent work, resume the original implementor for its own commit and serialize these follow-ups so they cannot race over the shared index.
+Preserve pre-existing and other agents' changes, use the agreed commit-message convention, and record the commit hash.
+Do not create commits when the run's policy does not authorize them.
+
+Report the task's outcome briefly and launch newly ready work within the approved batch.
+
+## 7. Boundaries, blockers, and failures
+
+At a batch boundary, let every already-started task and review in that batch settle.
+Show a consolidated table with task status, review status, outcome or blocker, and commit when applicable.
+Link the outcome records, identify the next tasks, and wait for the user's continuation before launching another batch.
+
+If a task needs a user decision, stop launching new work.
+Let already-active independent sessions settle, record all results, and present the blocking question without answering it on the user's behalf.
+Resume the same affected session after the answer.
+Do not start dependent work or call the task complete while blocked.
+
+On process failure, preserve work and session IDs, materialize the bounded diagnostic using the harness reference, and stop new launches.
+Do not skip the failed task, silently change models, or take over its implementation or review.
+When a supplied full-access launch was accidentally restricted, correct the launch to the already-authorized settings and resume; no new permission question is needed.
+An actual host-policy rejection, missing credential, or unavailable service remains a real blocker.

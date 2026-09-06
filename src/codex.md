@@ -1,49 +1,22 @@
 # Codex parent guidance
 
-Read this file only when **Codex is the agent that loaded the skill** and is supervising the delegated work.
-These rules are about Codex as the parent agent.
-They do not replace or relocate the child-Codex launch, model, resume, review-mode, or failure commands in the embedded harness CLI reference.
+Apply this guide only when Codex loaded the skill.
+Child CLI settings remain in the embedded harness reference.
 
-## Run every child-harness command on the host shell
+Use Codex's approved host command path for child discovery, launches, resumes, and lifecycle operations.
+If the parent command tool is sandboxed, set `sandbox_permissions: "require_escalated"` and give a task-specific justification referring to the authorized run.
+If it already executes unrestricted on the host, use that path directly.
+Do not mistake a failure inside the parent's sandbox for an unavailable child harness.
 
-Every external coding-agent CLI command must run outside Codex's sandbox through the elevated host-shell path by setting `sandbox_permissions: "require_escalated"` on Codex's command-tool call.
-This applies whether the child harness is Codex, Claude Code, or Cursor Agent.
-It includes availability and model discovery, launches, resumes, provider status checks, and lifecycle checks or kills.
+Carry the user's full-access authorization through the complete task, including other harnesses, resumes, and nested reviews.
+Do not ask again for access already granted.
+An actual host approval rejection must be reported and respected.
 
-The elevation setting belongs to the parent command-tool call, not to the child harness CLI.
-Keep the command's working directory at the task's absolute working directory and continue to pass the child harness's own documented sandbox or permission flags.
-Those child flags take effect only after the process starts and cannot bypass the parent sandbox during initialization.
-Supply a concise, task-specific approval justification when requesting the host shell.
-Do not try the parent sandbox first or interpret its startup or authentication failure as evidence that the host harness is unavailable.
+Launch with a short initial yield, retain the returned process-session handle, and wait through Codex's managed input/wait operation until exit.
+Keep invocation and post-exit extraction in the same attached shell block.
+Use the same mechanism for every round and keep each concurrent task's handle distinct.
+Do not add shell backgrounding or read streamed transcripts.
+If no managed asynchronous facility is available, report the limitation.
 
-Host-shell elevation changes only where the child process starts.
-It does not broaden the task, authorize additional edits, or relax any implementation or review guard.
-
-## Get permission before running Claude Code unrestricted
-
-Before launching Claude Code with `--permission-mode bypassPermissions`, confirm that the user explicitly authorized that capability.
-Choosing Claude or naming a model is not authorization.
-If authorization is missing, ask once and wait for a clear yes:
-
-> Claude Code needs `--permission-mode bypassPermissions` to access this repository.
-> This lets Claude inspect and transmit repository content, run commands, and potentially modify files.
-> Do you authorize this for the complete Claude session, including resume rounds?
-
-After authorization, keep repository access unrestricted, include the authorization in the host-shell escalation justification, and do not ask again for the same Claude session.
-Review prompts and content baselines may detect unwanted edits, but they do not restrict this capability.
-
-If the host rejects the launch after authorization, stop and offer another harness or a user-run Claude session.
-Do not attempt an approval workaround.
-
-## Use Codex's managed asynchronous command session
-
-Launch and resume child runs with command execution using a short initial yield.
-Retain the returned session id and continue waiting through Codex's session wait or input operation until the process exits without reading `<LOG>`.
-
-Keep the harness shell block in the foreground inside that managed session so its post-exit extraction runs in order.
-Do not add shell `&`, `nohup`, or another detached subprocess.
-Use the same elevated host-shell path for the launch, every resume, and any later lifecycle check or kill.
-If no managed asynchronous command session is available, stop and explain that the workflow cannot run safely.
-
-When submitting multiline shell through Codex's `functions.exec`, use a JavaScript `String.raw` template literal.
-Do not double-escape an embedded `jq` program.
+When constructing multiline shell in JavaScript, preserve literal quoting, backslashes, and skill mentions.
+A quoted heredoc must reach the shell unchanged.

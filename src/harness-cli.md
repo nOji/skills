@@ -1,374 +1,374 @@
 # Harness CLI reference
 
-> The verified command forms for the three coding-agent CLIs that the `co-implement`, `co-review`, and `orchestrate` skills delegate to.
-> Every command below was run on this machine and behaved as described.
-> Prefer these forms verbatim; when one fails, report what it printed rather than inventing a variant.
+Shared launch, invocation, ownership, and recovery instructions for Codex, Claude Code, and Cursor Agent.
+Parent-specific process tools belong in the adjacent parent guides.
 
-The three harnesses are **Codex** (`codex`), **Claude Code** (`claude`), and **Cursor Agent** (`cursor-agent`, with `agent` as a legacy fallback).
-In every command below, replace `<CURSOR_CMD>` with the Cursor executable found during availability checks and keep that choice for the whole task.
-All three take the prompt on stdin, run headless, emit JSON, and can resume a session by id.
+Checked against official documentation and local CLI help on 2026-09-06: Codex 0.153.4, Claude Code 2.1.246, and Cursor Agent 2026.08.25-3e8eec8.
+This is not a claim that every model, account, integration, or command combination was exercised.
+Use the installed CLI's help and current catalog when a version differs; never invent flags or model IDs.
 
-This reference describes the child harnesses being invoked.
-Instructions that depend on which agent loaded the skill belong in the adjacent `codex.md`, `claude.md`, or `cursor.md` parent guide and must not be inferred from the child command being run.
+## 1. Discover and select
 
-## 1. Availability
+Before studying implementation files, find the installed executables.
+A parent may delegate to the same product.
 
 ```bash
-which codex; which claude; which cursor-agent || which agent
+command -v codex
+command -v claude
+command -v cursor-agent || command -v agent
 ```
 
-A harness that prints no path is not installed and is not a candidate.
-For Cursor, prefer `cursor-agent`; try the legacy `agent` executable only when `cursor-agent` is absent.
-`which` exits non-zero for a missing binary, so run the checks as one line and read the paths, not the overall exit status.
+Treat each returned path independently; a missing executable does not invalidate the other candidates.
+Use the discovered Cursor executable as `agent_cursor_cmd` throughout the task.
+Check available models and authentication without printing credentials or full configuration.
 
-**A parent may delegate to the child CLI from the same product.**
-Do not remove a harness merely because it matches the agent that loaded the skill.
-
-**Do not narrate any of this.** Which binaries exist, which ones failed availability checks and why, what you are about to run next — none of it is news to the user, and all of it is plumbing they asked you to handle. Run the commands and go straight to the menu in §8. The first thing the user should see from the preflight is the menu itself.
-
-## 2. Model listing, and what a dead harness looks like
-
-### Codex
+For Codex, filter the catalog before it enters the parent context:
 
 ```bash
+set -o pipefail
 codex debug models | jq -r '
-  ["MODEL", "REASONING EFFORTS", "MODES"],
-  (
-    .models[]
-    | select(.visibility == "list")
-    | [
-        .slug,
-        ([.supported_reasoning_levels[].effort] | join(", ")),
-        (if any(.service_tiers[]?; .id == "priority") then "normal, fast" else "normal" end)
-      ]
-  )
+  .models[] | select(.visibility == "list")
+  | [.slug,
+     ([.supported_reasoning_levels[]?.effort] | join(", ")),
+     ([.service_tiers[]?.id] | join(", "))]
   | @tsv
-' | column -t -s $'\t'
+'
 ```
 
-**Never read the raw output of `codex debug models`** — the catalog carries every model's full system prompt and runs to roughly 250 KB. Always pipe it through `jq`.
+Never print the raw catalog: it includes model prompts.
+A successful listing does not establish remaining execution quota.
 
-The `MODEL` column is the exact `-m` value, `REASONING EFFORTS` is that row's permitted `model_reasoning_effort` levels, and `MODES` says whether the row accepts a fast tier.
-
-> **Verified caveat, and it matters:** `codex debug models` succeeded on this machine while the account was fully out of usage quota.
-> The catalog is served independently of the run quota, so a clean listing is **not** proof that Codex can execute anything.
-> Codex's exhaustion surfaces only on the first real run — see §7.
-
-### Claude Code
+For Cursor:
 
 ```bash
-echo "/model" | claude -p --output-format json | jq -r '.result'
+set -o pipefail
+"$agent_cursor_cmd" --list-models 2>&1 \
+  | sed $'s/\033\\[[0-9;]*[A-Za-z]//g'
 ```
 
-Returns the current model and the alias list, e.g. `sonnet, opus, haiku, fable, best, sonnet[1m], opus[1m], fable[1m], opusplan, default, or a full model ID`.
+For Claude, `claude auth status` checks authentication.
+Use the installed CLI's supported aliases and the [model configuration reference](https://code.claude.com/docs/en/model-config), accounting for known account or configured restrictions.
+Claude does not document a general `--list-models` equivalent.
+Do not present a model's prose response to `/model` as an authoritative account catalog.
 
-### Cursor Agent
+Retain actual discovery errors and mark unavailable harnesses with a short reason.
+Authentication and catalogs do not guarantee quota or model access; handle execution failures when they occur.
+
+Present a compact menu only for choices still missing.
+Show display names, one line per harness, and ask for the model, supported effort, and available speed choice.
+Shortlist Cursor's model families rather than printing every variant.
+Use the calling skill's recommendation only when available.
+Treat selections supplied through an approved orchestration prompt as already answered.
+Do not switch harness, model, effort, or requested speed on your own.
+If runtime metadata reports a substituted model, surface it rather than attributing the work to the requested model.
+
+| Harness | Model and effort | Speed |
+| --- | --- | --- |
+| Codex | `-m <id>`, `-c 'model_reasoning_effort="<effort>"'` | Fast uses `-c 'service_tier="priority"'` when the catalog supports it; normal uses the configured standard setting |
+| Claude Code | `--model <alias-or-id>`, `--effort <supported-level>` | Supported Opus models can use `--settings '{"fastMode":true}'` |
+| Cursor Agent | `--model <catalog-entry>` | Use the catalog's exact effort/speed variant or documented parameterized model form |
+
+Omit effort flags for models that do not support them.
+Do not invent Cursor suffixes from a family name.
+If an explicit normal-speed choice conflicts with saved fast-mode settings, resolve that per-run setting before launch rather than silently retaining fast mode.
+Claude fast mode requires supported account access and may use separately billed usage credits; offer it only with that distinction clear.
+See [Claude fast mode](https://code.claude.com/docs/en/fast-mode).
+
+## 2. Preserve normal capabilities
+
+Use full host access for the authorized task, including local services, Docker, networking, resumes, and nested reviews.
+Carry existing authorization forward; do not insert another approval question at every launch or review round.
+Honor a user-requested restriction and any enforced host or organization policy.
+
+There are two boundaries: where the parent starts the CLI, and where the child executes its tools.
+The parent must use its approved host execution facility.
+Disabling the child's sandbox cannot escape an outer sandbox.
+Likewise, starting the CLI on the host does not remove a sandbox selected by the child's flags.
+Codex's `workspace-write` profile therefore must not be the default for these full-access workflows.
+See [Codex non-interactive execution](https://learn.chatgpt.com/docs/non-interactive-mode) and [permissions](https://learn.chatgpt.com/docs/permissions).
+
+| Child | Full-access launch settings |
+| --- | --- |
+| Codex | `--dangerously-bypass-approvals-and-sandbox`, on both launch and resume |
+| Claude Code | `--permission-mode bypassPermissions --settings '{"sandbox":{"enabled":false}}'` |
+| Cursor Agent | `--force --sandbox disabled --trust --approve-mcps` |
+
+Claude's permission mode and Bash sandbox are separate controls.
+Cursor's force flag and sandbox setting are also separate.
+The Cursor MCP flag approves the configured servers for this run.
+These options do not override explicit administrative restrictions or create missing credentials.
+See [Claude permissions](https://code.claude.com/docs/en/permissions), [Claude sandboxing](https://code.claude.com/docs/en/sandboxing), and [Cursor CLI parameters](https://cursor.com/docs/cli/reference/parameters).
+
+Start in the task's actual working directory with the normal user identity, environment, login, settings, skills, plugins, and configured integrations.
+Keep the harness's default system prompt, memory, context, and compaction behavior unless the user chose an override.
+Do not use `env -i`, an artificial home/config directory, `--ignore-user-config`, `--ignore-rules`, `--bare`, `--safe-mode`, `--strict-mcp-config`, or tool allowlists to simplify delegation.
+Do not pass flags that disable skills, session persistence, or otherwise remove normal capabilities.
+Merge necessary per-run settings without discarding unrelated settings.
+
+Normal configuration is each child's own configuration; a CLI does not automatically inherit another product's settings or the parent chat's desktop-only tools.
+Preserve ordinary automatic instruction discovery instead of copying those instructions into the task prompt.
+Do not claim unavailable integrations are present.
+See [Claude headless context loading](https://code.claude.com/docs/en/headless) and [Codex instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+
+Run implementors and reviewers in normal agent mode.
+A reviewer receives a no-repair role instruction, with normal tools available for verification.
+Plan mode changes the deliverable and is not a substitute for review.
+
+## 3. Minimal prompts and explicit skills
+
+Pass the user's task and only missing execution-specific context: task scope, selected reviewer, approved access, ownership, concurrency, and coordination boundaries.
+Include a task document when the user named it.
+Do not append generic requests to read `AGENTS.md`, `CLAUDE.md`, context documents, or conventions the child normally discovers.
+Do not restate routine commit-message or reporting instructions already provided by the user's environment.
+Ask for an extra report field only when the workflow needs it and it is otherwise missing.
+
+When delegating a skill, put the explicit invocation at the beginning of the child's user prompt:
+
+| Child | Prompt form |
+| --- | --- |
+| Codex | `$co-review`, or the path-qualified mention `[$co-review](/absolute/skills/co-review/SKILL.md)` |
+| Claude Code | `/co-review <task and supplied choices>` |
+| Cursor Agent | `/co-review <task and supplied choices>` |
+
+Use the actual registered command for a namespaced plugin skill.
+The skill name is prompt content, not a shell command or a model flag.
+Use a quoted heredoc or correctly quoted argument so the shell does not expand `$co-review` or interpret Markdown.
+Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in `-p` prompts; Cursor documents explicit slash-skill invocation.
+See [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Claude headless skills](https://code.claude.com/docs/en/headless), and [Cursor skills](https://cursor.com/docs/skills).
+
+Before offering an installed skill route, resolve its real entrypoint and confirm it is enabled and usable by the selected child in this working directory.
+Use an existing skill listing when available, then check the relevant normal discovery locations:
+
+| Child | Normal locations to check |
+| --- | --- |
+| Codex | Applicable ancestor `.agents/skills/` directories and `~/.agents/skills/`, plus configured plugin skills |
+| Claude Code | Applicable `.claude/skills/`, `~/.claude/skills/`, and installed plugin skills |
+| Cursor Agent | Applicable `.agents/skills/`, `.cursor/skills/`, their user-level equivalents, and supported compatibility/plugin locations |
+
+Follow symlinks and actual configuration; do not assume a directory exists or a parent-visible skill is registered in every child.
+File existence alone does not prove that a particular CLI version will expand its command.
+If native loading fails, report the failure and use the workflow's embedded alternative.
+Do not install a missing skill, enable a disabled one, or disguise its contents as a workaround.
+
+Forward already approved reviewer settings and access as user decisions.
+Explicit invocation does not itself override permissions; the launch settings establish the authorized access.
+An unattended child returns any genuinely missing decision to its coordinator instead of waiting on an interactive question.
+
+## 4. Run records and ownership
+
+Before creating run artifacts in a Git working tree, establish a local ignore rule:
 
 ```bash
-<CURSOR_CMD> --list-models 2>&1 | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g'
-```
-
-The raw output is ANSI-coloured and needs the `sed` filter to be readable.
-Each line is `<slug> - <Display Name>`, and the list is long — roughly ninety entries.
-
-Cursor encodes reasoning effort and speed **in the slug itself**: `cursor-grok-4.6-xhigh-fast` is one model, one effort, one mode.
-There are no separate effort or speed flags. `<CURSOR_CMD> status` reports the logged-in account if you need to distinguish an auth failure from a listing failure.
-
-### Reading a failure
-
-A listing that reports **not authenticated**, prompts for login, reports **expired credentials**, reports a **quota or usage limit**, exits non-zero, or returns nothing means that harness is out of service.
-Drop it from the candidates and **keep its exact message** — the skill reports it to the user in the §8 menu.
-
-## 3. Selecting model, effort, and speed
-
-|                  | Model                                                    | Reasoning effort                                                               | Fast mode                                                         |
-| ---------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| **Codex**        | `-m <slug>`                                              | `-c 'model_reasoning_effort="<effort>"'` — only a level that model's row lists | `-c 'service_tier="priority"'`; omit the flag entirely for normal |
-| **Claude Code**  | `--model <alias-or-id>`                                  | `--effort low\|medium\|high\|xhigh\|max`                                       | not selectable from the CLI                                       |
-| **Cursor Agent** | `--model <slug>` — effort and speed are part of the slug | in the slug (`-low`/`-medium`/`-high`/`-xhigh`/`-max`)                         | in the slug (`-fast` suffix)                                      |
-
-Two verified traps:
-
-- **Codex's fast tier is `priority`, not `fast`.** That is the `id` the model catalog gives it; `fast` is only its display name. The tier string is not validated locally, so a wrong value fails at request time or is silently ignored rather than erroring.
-- **Claude's `--effort` only applies to models that have effort levels.** Passing `--effort low` together with `--model haiku` did not run Haiku — the run came back attributed to Sonnet 5. Pass `--effort` only with Opus, Sonnet, or Fable; omit it entirely for Haiku.
-
-## 4. Launching a round
-
-### Always use the parent's managed asynchronous process facility
-
-Child runs routinely outlive a synchronous shell-tool call.
-Submit every launch and resume through the supervising agent's managed long-running process facility, retain the returned task or session handle, and wait on that handle until the process exits.
-Use the exact facility required by the parent guide loaded from the skill entrypoint.
-An unlisted parent must use its native managed background-task or yielded-session facility.
-
-The shell block below remains a foreground command *inside* that managed session so its post-exit extraction runs in order.
-Do not add shell `&`, `nohup`, or a detached subprocess of your own.
-If the parent has no managed asynchronous process facility, stop and explain that this workflow cannot safely run there.
-
-### The shape
-
-Every launch is the same shape: the prompt arrives as a quoted heredoc on stdin, the transcript goes to `<LOG>`, the final message ends up in `<RESP>`, and the exact resumable session id goes to `<SESSION>`.
-The heredoc avoids every quoting problem an inline prompt creates and leaves no temp file behind.
-
-Before the first launch in a working repository, add `/.agent-runs/` to Git's local exclude file and verify that Git ignores it:
-
-```bash
-agent_runs_exclude_path="$(git rev-parse --git-path info/exclude)" || exit 1
-mkdir -p "$(dirname "$agent_runs_exclude_path")"
-touch "$agent_runs_exclude_path"
-grep -qxF '/.agent-runs/' "$agent_runs_exclude_path" || \
-  printf '\n/.agent-runs/\n' >> "$agent_runs_exclude_path"
-git check-ignore -q --no-index .agent-runs/.ignore-check || {
-  echo "error: .agent-runs/ is not ignored" >&2
+agent_exclude_path="$(git rev-parse --git-path info/exclude)" || exit 1
+mkdir -p "$(dirname "$agent_exclude_path")"
+touch "$agent_exclude_path"
+grep -qxF '/.agent-runs/' "$agent_exclude_path" ||
+  printf '\n/.agent-runs/\n' >> "$agent_exclude_path"
+git check-ignore -q --no-index .agent-runs/.ignore-check || exit 1
+test -z "$(git ls-files -- .agent-runs)" || {
+  echo "Run artifacts are already tracked; resolve that before delegation." >&2
   exit 1
 }
 mkdir -p .agent-runs
 ```
 
-This changes only local Git metadata, not the repository's tracked `.gitignore`.
-If the directory is not a Git working tree or the ignore check fails, stop before launching a harness.
+This changes local Git metadata, not tracked `.gitignore`.
+If the directory is not a Git working tree or run artifacts cannot be kept untracked, stop before launching.
 
-All three run files live in **`.agent-runs/` at the repository root**, after that preflight has made the directory locally ignored.
-Use the same task-and-round stem for `<LOG>` and `<RESP>`, and one stable `.agent-runs/<task>.session` path for `<SESSION>` across every round.
-Never write them to `/tmp`, and never anywhere tracked.
-`<W>` below is the absolute path of the working directory.
+Capture ownership without dumping source into the parent context:
+save `git diff --cached --binary HEAD` and `git diff --binary` as separate files, plus a NUL-safe untracked-file manifest with path, type, and SHA-256 content hash.
+For an unborn repository, use the index-versus-empty-tree baseline instead of `HEAD`.
+Retain content needed for any safe restoration; hashes alone cannot restore a modified untracked file.
+
+Capture the initial baseline before implementation and a review baseline before each reviewer round.
+Preserve pre-existing user work and other agents' changes.
+Only stage, revert, or commit deltas whose ownership is established.
+Never use broad staging such as `git add .` or `git add -A`.
+In concurrent work, keep ownership boundaries and serialize all shared-index changes.
+
+Each task and role gets a unique stem:
+`.agent-runs/<task>-<role>-r1.log`, `...-r1.response.md`, and one stable `.agent-runs/<task>-<role>.session`.
+Use new log/response files for every round and keep nested review artifacts distinct.
+Store artifacts here rather than in `/tmp`; pass prompts directly instead of creating prompt files.
+
+The parent reads only the final response after exit and the one-line session file when resuming.
+Never read or print the streamed log, including for progress or failure diagnosis.
+Only mechanical post-exit extraction of final output, session metadata, or bounded errors may consume it, with output redirected to files.
+
+## 5. Launch and resume
+
+Use the parent's managed asynchronous process facility and retain its handle.
+Keep the shell block attached to that facility; do not add `&`, `nohup`, or an unmanaged detached process.
+If the parent cannot manage the process lifetime, report that limitation.
+Wait on the handle until exit; use it for lifecycle checks and cancellation.
+
+In the examples, set `agent_model`, `agent_effort`, `agent_workspace`, `agent_log`, `agent_response`, and `agent_session` to the chosen values and task-local paths.
+Set the command tool's working directory to `agent_workspace`.
+The snippets use Bash-compatible shell syntax.
+Include the invocation, its post-exit extraction, and exit-status propagation in the same managed shell block.
+For every resume, require a nonempty saved session file and read its exact ID into `agent_session_id`.
+For Claude and Cursor, define `agent_finish_json_round` from the finalizer section inside that shell block before the invocation.
 
 ### Codex
 
 ```bash
-codex_run_status=0
+agent_exit=0
 codex exec \
-  -m <model> \
-  -c 'model_reasoning_effort="<effort>"' \
-  -c 'service_tier="priority"' \
-  --sandbox workspace-write \
-  --json \
-  -o <RESP> \
-  - > <LOG> 2>&1 <<'PROMPTEOF' || codex_run_status=$?
-<the prompt>
-PROMPTEOF
-jq -Rr 'fromjson? | select(.type == "thread.started") | .thread_id // empty' \
-  < <LOG> 2>/dev/null | head -n 1 > <SESSION>
-exit "$codex_run_status"
+  --dangerously-bypass-approvals-and-sandbox \
+  -m "$agent_model" \
+  -c "model_reasoning_effort=\"$agent_effort\"" \
+  --json -o "$agent_response" \
+  - > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<user task, preceded by an explicit skill mention when requested>
+AGENT_PROMPT
+
+if ! test -s "$agent_session"; then
+  jq -Rr 'fromjson? | objects | select(.type == "thread.started") | .thread_id // empty' \
+    "$agent_log" 2>/dev/null | head -n 1 > "$agent_session"
+fi
+exit "$agent_exit"
 ```
 
-Codex writes the final message to `-o` itself, so no extraction step is needed.
-`--json` makes stdout a JSONL event stream; its first `thread.started` event carries the exact resumable `thread_id`.
-The post-exit extractor ignores non-JSON stderr, writes only that id to `<SESSION>`, and preserves the Codex process's exit status.
-The trailing `-` is required for it to read the heredoc from stdin; because the heredoc closes stdin, never add a `< /dev/null` guard as well or the prompt arrives empty.
-Drop the `service_tier` line for normal mode.
-Keep the selected model's default context and compaction settings unless the user explicitly asks to override them and the model catalog confirms the requested values are supported.
+Add `-c 'service_tier="priority"'` only for a selected, supported fast tier.
+Codex writes the final response through `-o`.
+The structured `thread.started.thread_id` identifies this exact child.
+See [Codex exec output](https://learn.chatgpt.com/docs/non-interactive-mode).
 
-Separately, **ask the user** whether to add `-c 'features.memories=false'` any time Codex is chosen as the implementor or reviewer — it disables Codex's cross-session memory for that run. This one is not a default: confirm it in chat before the first launch of a Codex round, and carry the answer for every later round in the same task.
+For later rounds, read the saved ID and replace the invocation with:
+
+```bash
+agent_session_id="$(sed -n '1p' "$agent_session")"
+test -n "$agent_session_id" || exit 1
+agent_exit=0
+codex exec resume \
+  --dangerously-bypass-approvals-and-sandbox \
+  -m "$agent_model" \
+  -c "model_reasoning_effort=\"$agent_effort\"" \
+  --json -o "$agent_response" \
+  "$agent_session_id" - > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<follow-up for this same task>
+AGENT_PROMPT
+exit "$agent_exit"
+```
+
+Repeat the selected speed setting too.
+All flags precede the session ID.
+Do not add `--sandbox` to `exec resume`; the full-access flag above is supported on both forms.
 
 ### Claude Code
 
 ```bash
+agent_exit=0
 claude -p \
-  --model <model> \
-  --effort <effort> \
+  --model "$agent_model" --effort "$agent_effort" \
   --permission-mode bypassPermissions \
+  --settings '{"sandbox":{"enabled":false}}' \
   --output-format stream-json --verbose \
-  --add-dir "<W>" \
-  > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
+  > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<user task, or /co-review followed by the task and supplied choices>
+AGENT_PROMPT
+agent_finish_json_round
+exit "$agent_exit"
 ```
 
-**Never pass `--no-session-persistence`** — it discards the session and makes §6's resume impossible.
+Omit `--effort` for unsupported models.
+If speed was explicitly chosen, merge `"fastMode":true` or `"fastMode":false` into that same settings object as appropriate.
+For resume, add `--resume "$agent_session_id"` after `-p`, retaining all other settings and using new round files.
+Never disable session persistence.
+The working directory controls normal project discovery; `--add-dir` only adds other directories when needed.
+See [Claude CLI flags](https://code.claude.com/docs/en/cli-reference).
 
 ### Cursor Agent
 
 ```bash
-<CURSOR_CMD> -p \
-  --model <model> \
-  -f \
+agent_exit=0
+"$agent_cursor_cmd" -p \
+  --model "$agent_model" \
+  --force --sandbox disabled --trust --approve-mcps \
+  --workspace "$agent_workspace" \
   --output-format stream-json \
-  --workspace "<W>" \
-  > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
+  > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<user task, or /co-review followed by the task and supplied choices>
+AGENT_PROMPT
+agent_finish_json_round
+exit "$agent_exit"
 ```
 
-`-f` (force) is what makes it non-interactive with write access.
+For resume, add `--resume "$agent_session_id"` after `-p`, retaining the exact model variant and all other settings.
+See [Cursor headless execution](https://cursor.com/docs/cli/headless) and [sandbox controls](https://cursor.com/docs/cli/overview).
 
-### Review posture: normal mode, never plan mode
+### JSON finalizer for Claude and Cursor
 
-A review must not edit the tree, but **plan mode is not how you get that, on any harness.** Plan mode changes what the agent is _for_: it stops reviewing and starts drafting a proposal for approval, which is a different deliverable than the one the skill asked for. Verified on both CLIs that offer it — Cursor answered a work request with "I'll outline that plan for your approval", and Claude wrote a plan file to `~/.claude/plans/` instead of doing the task. **Never launch a review, or an implementation, in plan mode.**
-
-Run reviews in normal mode, with one exception where a genuine read-only mode exists:
-
-|                  | Review posture                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Codex**        | `--sandbox workspace-write`, exactly as above. The no-edit instruction in the prompt is the guard.           |
-| **Claude Code**  | `--permission-mode bypassPermissions`, exactly as above. The no-edit instruction in the prompt is the guard. |
-| **Cursor Agent** | `--mode ask --trust` in place of `-f`. Genuinely read-only and still runs shell commands.                    |
-
-Cursor's **ask** mode is the one real enforcement available: it ran `ls -1` and reported the count, then refused the file creation outright — _"I can't create h.txt while Ask mode is on (writes are blocked)"_. Prefer it for Cursor reviews. `--trust` is not optional alongside it: Cursor gates an unfamiliar workspace behind a trust prompt that `-f` happens to satisfy but `--mode ask` does not, so without it the run exits non-zero with _"To proceed… Pass --trust, --yolo, or -f if you trust this directory"_ and never reaches the model.
-
-**Do not try to enforce read-only on Claude with `--disallowed-tools`.** Verified: `--disallowed-tools "Edit,Write,NotebookEdit,MultiEdit"` blocked the edit tools and the model simply wrote the file through Bash instead. Denying tools moves the write, it does not prevent it. For Codex and Claude, the prompt instruction plus the caller's separate pre-run and post-run content snapshots are the guard. A `git status --short` comparison alone cannot detect changes to an already-dirty path.
-
-### Materializing the final response — Claude and Cursor only
-
-Neither CLI has Codex's `-o`. Once the process has exited, mechanically transform the last result record into `<RESP>` with **all output redirected to that file**:
+Define this shell function before the Claude or Cursor invocation and call it only after that CLI exits.
+It is a local shell helper, not an installed command.
+It extracts the terminal report and session metadata without exposing the transcript:
 
 ```bash
-grep '"type":"result"' <LOG> \
-  | tail -n 1 \
-  | jq -r '"SESSION_ID: \(.session_id // "")\nIS_ERROR: \(.is_error // false)\nSUBTYPE: \(.subtype // "")\nAPI_ERROR_STATUS: \(.api_error_status // "")\n\n\(.result // empty)"' \
-  > <RESP>
-sed -n 's/^SESSION_ID: //p' <RESP> | head -n 1 > <SESSION>
-```
+agent_finish_json_round() {
+jq -Rsr --argjson code "$agent_exit" '
+  [split("\n")[] | fromjson? | objects] as $events
+  | ([$events[] | select(.type == "result")] | last) as $r
+  | ([$events[] | select(.type == "system" and .subtype == "init")] | first) as $init
+  | "RUN_STATUS: \(if $code == 0 and $r != null and $r.is_error != true
+                       and $r.subtype == "success"
+                       and (($r.result // "") | length) > 0
+                    then "COMPLETED" else "FAILED" end)\n"
+    + "SESSION_ID: \($r.session_id // $init.session_id // "")\n"
+    + "MODEL: \($init.model // "")\n"
+    + "SUBTYPE: \($r.subtype // "")\n"
+    + "API_ERROR_STATUS: \($r.api_error_status // "")\n\n"
+    + ($r.result // "No terminal report; use bounded failure extraction.")
+' "$agent_log" > "$agent_response" 2>/dev/null
 
-This is a mechanical file-to-file extraction, not permission for the parent agent to inspect `<LOG>`. The command must not print any transcript-derived byte to the tool result or parent context.
-
-Claude's `.result` is the final assistant message alone.
-**Cursor's `.result` is every assistant message of the turn concatenated**, so its narration arrives along with its conclusion — still far cheaper than the transcript, but do not mistake the leading sentences for the deliverable.
-
-## 5. The three files, and the two you are allowed to read
-
-- **`<RESP>` — the compact control header plus final message. This is the only transcript-bearing agent-run file the parent ever reads or prints.**
-- **`<SESSION>` — one exact session id and nothing else.** The parent may read it only to resume the same task.
-- **`<LOG>` — the streamed transcript.** Written continuously while the run is alive. **The parent never reads or prints this file.** Not with Read, `cat`, `head`, `tail`, `grep` that writes to stdout, or any tool call whose result enters the parent context; not whole, not in part, not while it runs, not after it exits, and not even for failure diagnosis.
-
-The `<LOG>` holds the harness's entire intermediate reasoning — every tool call, every file it opened, every thought it discarded. It is routinely tens of thousands of tokens, and pouring it into your context is the exact cost these skills exist to avoid. A run that succeeded has already told you everything it concluded, in `<RESP>`. Reading the transcript on top of that buys nothing and can cost more context than the entire task it was supervising.
-
-The only permitted contact with `<LOG>` is a post-exit shell transformation whose stdout and stderr are fully redirected into `<RESP>`, or the metadata-only extraction of `thread.started.thread_id` into `<SESSION>`.
-The parent then reads `<RESP>` and, only when resuming, `<SESSION>`.
-There is no diagnostic exception and no fallback tail.
-
-## 6. Resuming the same session
-
-Every later round goes back to the **same session**; a fresh launch throws away the context that makes iteration cheaper than a restart.
-
-Every round reads the exact id captured during round 1 from its task-local `<SESSION>` file.
-Never discover a Codex session by newest modification time, global `--last`, or the parent process's `CODEX_THREAD_ID`: concurrent Codex activity can make all three identify the wrong thread.
-
-```bash
-test -s <SESSION>
-session_id=$(sed -n '1p' <SESSION>)
-```
-
-For a legacy Codex run that predates `<SESSION>`, correlate the task log's **birth/creation time** with rollout files created in the same launch window, then save the matched filename id to `<SESSION>` before resuming.
-Never fall back to the globally newest modified rollout unless you have proved no other Codex activity occurred.
-
-```bash
-# Codex — every flag BEFORE the session id; `resume` rejects --sandbox
-codex exec resume \
-  -m <model> \
-  -c 'model_reasoning_effort="<effort>"' \
-  -c 'service_tier="priority"' \
-  -c 'sandbox_mode="workspace-write"' \
-  --json \
-  -o <RESP> \
-  "$session_id" - > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
-
-# Claude Code — same flags as the launch, plus --resume
-claude -p --resume <session-id> --model <model> ... > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
-
-# Cursor Agent — same flags as the launch, plus --resume
-<CURSOR_CMD> -p --resume <session-id> --model <model> ... > <LOG> 2>&1 <<'PROMPTEOF'
-<the prompt>
-PROMPTEOF
-```
-
-All three keep the same session id across rounds, so the id captured after round 1 stays valid for the whole task.
-If the exact id is unrecoverable, stop and report that fact rather than guessing with `--last`.
-
-Resume rounds use the same parent-managed asynchronous process facility. Every word of §4's launch rule applies to every round.
-
-## 7. Failure signatures, materialized into the response file
-
-Read the exit status first; a `<RESP>` that is empty or missing means the same thing.
-
-|                  | Signature of a dead run                                                                                                                                                                                                                                                     |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Codex**        | Non-zero exit; the transcript ends in `{"type":"error","message":…}` and `{"type":"turn.failed",…}`. A usage-limit block reads _"You've hit your usage limit… try again at &lt;date&gt;"_ and, as noted in §2, is invisible to `codex debug models` — it appears only here. |
-| **Claude Code**  | Non-zero exit, or a result record with `"is_error":true`; `.subtype` and `.api_error_status` name the cause.                                                                                                                                                                |
-| **Cursor Agent** | Non-zero exit, or no `"type":"result"` record in the stream at all. An untrusted workspace fails this way, asking for `--trust`, `--yolo`, or `-f`.                                                                                                                         |
-
-When a run dies and normal response materialization left `<RESP>` empty, mechanically extract a bounded diagnostic **into `<RESP>`**. These commands must not emit transcript-derived output to the parent context:
-
-```bash
-# Codex
-{
-  printf 'RUN_FAILED\n'
-  jq -Rr '
-    fromjson?
-    | select(.type == "error" or .type == "turn.failed")
-    | .message // (if (.error | type) == "object" then .error.message else .error end) // empty
-  ' <LOG> 2>/dev/null | tail -n 3
-} > <RESP>
-
-# Only if this round emitted no thread.started event, so no agent transcript started:
-if test "$(wc -l < <RESP>)" -eq 1 \
-  && ! jq -Re 'fromjson? | select(.type == "thread.started") | .thread_id' <LOG> >/dev/null 2>&1; then
-  {
-    printf 'RUN_FAILED\n'
-    sed $'s/\\033\\[[0-9;]*[a-zA-Z]//g' <LOG> \
-      | awk 'NF && $0 !~ /^[[:space:]]*\\{/ { lines[++n] = substr($0, 1, 500) } END { first = n > 3 ? n - 2 : 1; for (i = first; i <= n; i++) print lines[i] }'
-  } > <RESP>
+if ! test -s "$agent_session"; then
+  sed -n 's/^SESSION_ID: //p' "$agent_response" | head -n 1 > "$agent_session"
 fi
-
-# Claude Code
-{
-  printf 'RUN_FAILED\n'
-  grep -o '"result":"[^"]*"' <LOG> | tail -n 1
-} > <RESP>
-
-# Cursor Agent
-{
-  printf 'RUN_FAILED\n'
-  grep -o '"error"[^,]*' <LOG> | tail -n 3
-} > <RESP>
+}
 ```
 
-Then read `<RESP>`, never `<LOG>`. If the bounded extractor finds nothing, report `RUN_FAILED` with no structured diagnostic and offer the fallback harness. **Never tail the transcript.** Missing diagnostics are preferable to polluting the parent context with an unbounded agent trace.
+A `FAILED` header is a failed run even if the CLI exited zero.
+A successful process report can still describe a blocked or incomplete task; inspect its meaning.
+Claude's terminal result is its final report; Cursor's result can concatenate assistant text from the turn.
+See [Cursor output format](https://cursor.com/docs/cli/reference/output-format).
 
-Kill a wedged run by matching the harness and the slug:
+Never replace a saved session ID with a different returned ID.
+Use that exact task-local ID for every continuation; never use `--last`, `--continue`, file modification order, or the parent's session ID.
+If no exact ID can be recovered from this task's own structured metadata, report that fact rather than guessing.
+
+## 6. Failure and recovery
+
+A non-zero exit, missing final response, materialized error, or missing required terminal result is a process failure.
+Keep failure reporting separate from a successful process that asks a task-level question.
+
+For failures without a useful final diagnostic, mechanically extract only explicit error records into a new response file:
 
 ```bash
-pkill -f 'codex exec.*<slug>'
-pkill -f 'claude .*<slug>'
-pkill -f '<CURSOR_CMD> .*<slug>'
+jq -Rsr '
+  [split("\n")[] | fromjson? | objects
+   | select(.type == "error" or .type == "turn.failed"
+            or (.type == "result" and .is_error == true))
+   | (.message // (if (.error | type) == "object" then .error.message else .error end)
+      // .result // .errors // empty)
+   | if type == "string" then . else tojson end]
+  | "RUN_FAILED\n" + (.[-3:] | join("\n") | .[0:2000])
+' "$agent_log" > "$agent_response" 2>/dev/null
 ```
 
-## 8. The model menu, as the user sees it
+Keep an existing final report intact when it is useful; use a separate round-specific failure-response path in that case.
+For a startup failure with no structured agent events, a bounded file-to-file extraction of the CLI's plain error is also acceptable.
+If no diagnostic is available, report the exit status and missing diagnostic.
+Do not inspect or tail the transcript.
 
-The listings are your reference, not the user's.
-Show **display names only** — no slugs, no effort suffixes, no table, no commentary about how you obtained them.
+Correct an accidental launch restriction to the already-authorized full-access settings and resume the same task without asking for permission again.
+For a parent tool that prematurely ended the process, retry once through its proper managed asynchronous facility.
+A transient capacity failure permits one short delayed retry.
+Do not retry quota, authentication, policy, or repeated capacity failures in a loop.
 
-Format it so the three things the user has to choose are unmissable:
+Report the actual blocker and current work.
+Offer another available harness before offering to take over yourself, and wait for authorization to change the selected harness or role.
+A new harness requires a fresh task brief; the previous harness's session ID is not portable.
+An enforced denial is not a reason to clear security settings or bypass a host control.
 
-```
-Pick a harness and model:
-
-🤖 **Codex** — GPT-5.6 Sol · GPT-5.6 Terra · GPT-5.6 Luna · GPT-5.5 · GPT-5.4
-🖱️ **Cursor** — Cursor Grok 4.6 · Composer 2.5 · Claude Opus 5 / Sonnet 5 / Fable 5 · GPT-5.6 Sol / Luna · Kimi K3 · GLM 5.2
-
-⛔ **Claude Code** — unavailable: out of usage limits until Aug 20
-
-Then tell me:
-
-  1️⃣  **Model** — any name above
-  2️⃣  **Reasoning effort** — `low` · `medium` · `high` · `xhigh` · `max`
-  3️⃣  **Speed** — ⚡ `fast` or 🐢 `normal`
-
-⭐ **Recommended:** Codex · GPT-5.6 Luna · `xhigh` · ⚡ fast
-```
-
-Rules for filling that template in:
-
-- **One line per available harness**, with the ⛔ line repeated for each harness that dropped out, naming the actual reason in a few words.
-- **Cursor lists around ninety entries and dumping them is useless.** Shortlist the prominent families only — **Cursor Grok, Composer, the latest Claude, the latest GPT, the latest Kimi, the latest GLM** — collapsing each family's effort and speed variants into one name.
-- **Offer only effort levels the shortlisted models actually support**, and say so if the user's pick narrows them.
-- **Say when speed is not a choice.** Claude Code has no fast mode, and Codex's `gpt-5.4-mini` has no fast tier; do not offer a knob that does not exist for the model in hand.
-- **One line of justification for the recommendation, at most.** "Quick, strong, and very cheap" is enough.
-
-The user picks conversationally — "sol on high", "the fast one", "grok, cheap and quick".
-You hold the full listing, so you translate that into the exact slug and flags from §3; do not make them read a slug.
-Answer any follow-up about what else is available from the listing you already have.
+In orchestration, stop new launches and settle already-active work before presenting blockers.
+Preserve completed implementation, review ledgers, and resumable sessions.
+Cancel through the managed handle or a verified task-specific process ID; do not use a broad name-based kill.

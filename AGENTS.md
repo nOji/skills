@@ -2,6 +2,7 @@
 
 The canonical skill definitions live in `src/skill-definitions/`.
 The canonical shared harness reference lives in `src/harness-cli.md`.
+The canonical shared review protocol lives in `src/review-protocol.md`.
 The canonical parent-agent guides live in `src/codex.md`, `src/claude.md`, and `src/cursor.md`.
 The `skills/` directory is AI-generated, committed distribution output.
 There is intentionally no deterministic build script or injection marker.

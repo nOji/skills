@@ -88,6 +88,7 @@ src/
   claude.md                      # Guidance only for a Claude Code parent agent
   cursor.md                      # Guidance only for a Cursor parent agent
   harness-cli.md
+  review-protocol.md             # Shared review dialogue and completion rules
   explicit-only.openai.yaml
   skill-definitions/
     co-implement.md
@@ -96,7 +97,7 @@ src/
 
 skills/                              # Generated and committed
   co-implement/
-    SKILL.md                         # Definition plus embedded harness
+    SKILL.md                         # Definition plus embedded shared modules
     codex.md
     claude.md
     cursor.md
@@ -116,16 +117,17 @@ skills/                              # Generated and committed
 ```
 
 `src/harness-cli.md` is the single source of truth for shared command forms.
+`src/review-protocol.md` is the single source of truth for review evidence, dialogue, ownership, and completion.
 The three parent-agent guides contain only behavior that changes because Codex, Claude Code, or Cursor loaded the skill; commands for invoking those products as child harnesses remain in `src/harness-cli.md`.
 Before a release, an AI agent first compares Git history and uncommitted changes to determine whether the generated output is stale.
-When regeneration is needed, it combines each canonical definition with the canonical harness inside the generated `SKILL.md` and copies all three parent-agent guides beside it.
+When regeneration is needed, it combines each canonical definition with its required harness and review modules inside the generated `SKILL.md` and copies all three parent-agent guides beside it.
 Each generated entrypoint directs Codex, Claude Code, or Cursor to read exactly the one parent guide that matches itself.
 There is intentionally no committed build script or injection marker, so formatting may vary between release-preparation runs while the complete source meaning must remain intact.
 The publishable distribution contains exactly the three skills shown above.
 
 ## Maintainer workflow
 
-1. Edit `src/harness-cli.md`, one of the three parent-agent guides, `src/explicit-only.openai.yaml`, or a file under `src/skill-definitions/`.
+1. Edit `src/harness-cli.md`, `src/review-protocol.md`, one of the three parent-agent guides, `src/explicit-only.openai.yaml`, or a file under `src/skill-definitions/`.
 2. Invoke the repository owner's project-local `prepare-skill-release` skill.
 3. Let that agent inspect both Git history and uncommitted changes and skip regeneration when the distribution is already semantically aligned.
 4. When regeneration is needed, let the agent combine the canonical inputs semantically, copy the parent-agent guides, and replace the three generated skill directories.
