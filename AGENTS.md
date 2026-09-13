@@ -10,6 +10,8 @@ There is intentionally no deterministic build script or injection marker.
 Do not edit `skills/` during ordinary source work.
 When the user explicitly asks to prepare a release, use the project-local `prepare-skill-release` skill when available, decide from Git history and uncommitted state whether regeneration is needed, and combine the canonical inputs according to that skill only when needed.
 Different release-preparation runs may produce different formatting, but they must preserve the complete canonical meaning.
-The normal Vercel Skills CLI discovery surface must contain exactly `co-implement`, `co-review`, and `orchestrate`.
+Every definition under `src/skill-definitions/` is a publishable skill.
+Derive the normal Vercel Skills CLI discovery surface from the complete canonical source inventory, including new definitions; never use a fixed skill list or count.
+Internal maintainer skills remain outside that canonical directory and the public discovery surface.
 
 Do not commit or push unless the user explicitly asks.

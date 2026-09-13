@@ -166,6 +166,9 @@ These options do not override explicit administrative restrictions or create mis
 See [Claude permissions](https://code.claude.com/docs/en/permissions), [Claude sandboxing](https://code.claude.com/docs/en/sandboxing), and [Cursor CLI parameters](https://cursor.com/docs/cli/reference/parameters).
 
 Start in the task's actual working directory with the normal user identity, environment, login, settings, skills, plugins, and configured integrations.
+When the parent is instructed to work in a Git worktree, whether selecting an existing one or creating one, resolve that worktree's absolute path before delegating and use it as `agent_workspace` for every child launch and resume.
+Explicitly tell each child, including implementors and reviewers, to work in that worktree and pass its absolute path in the task prompt.
+Require children to carry the same worktree path and instruction forward to any agents they summon, including nested reviews, unless the user explicitly assigns a different worktree to that task.
 Keep the harness's default system prompt, memory, context, and compaction behavior unless the user chose an override.
 Do not use `env -i`, an artificial home/config directory, `--ignore-user-config`, `--ignore-rules`, `--bare`, `--safe-mode`, `--strict-mcp-config`, or tool allowlists to simplify delegation.
 Do not pass flags that disable skills, session persistence, or otherwise remove normal capabilities.

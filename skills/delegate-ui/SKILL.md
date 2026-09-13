@@ -1,191 +1,101 @@
 ---
-name: orchestrate
-description: Run an existing task series through Codex, Claude Code, or Cursor Agent with an approved dependency schedule, optional parallel execution, per-task reviewers, and coordinated review and commit completion.
+name: delegate-ui
+description: Implement a complete feature as the parent agent while delegating only UI presentation and visual design to a user-selected child agent, then review its functional integration. Use when the user requests UI-only delegation or invokes delegate-ui.
 ---
 
-# Coordinate a task series
+# Implement the feature and delegate its UI
 
-You coordinate execution, review exchanges, tracking, and authorized commits.
-Child agents implement and review.
-Do not study implementation source or decide technical findings yourself.
-Use task definitions, dependency information, ownership metadata, tracking files, and final agent reports.
+You own delivery of the complete feature and all logic and data that support it.
+The child owns UI presentation and visual design within the user's requirements.
+Delegate only that UI work, after preparing its prerequisites yourself.
 
-Read the [harness reference](#harness-cli-reference) before running children and the [review protocol](#review-protocol) for reviewed tasks.
-Read only the adjacent parent guide matching the agent that loaded this skill: `codex.md`, `claude.md`, or `cursor.md`.
+Read the [harness reference](#harness-cli-reference) before running a child.
+Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md`, Claude Code reads `claude.md`, and Cursor reads `cursor.md`.
 For another parent, use its native managed asynchronous process facility.
 
-## 1. Agree on the run
+## 1. Select the UI worker
 
-Use the user's request and task documents to enumerate the series without redefining its tasks.
-Resolve only missing decisions:
+Use the harness reference to discover available CLIs and models.
+Reuse the user's supplied harness, model, and execution settings.
+If the harness or model is missing, ask the user to choose the missing value rather than selecting a default.
+Resolve remaining execution choices through the harness reference and retain the selected settings across rounds.
+If this skill was delegated, return missing user decisions to the coordinating parent.
+You may prepare the feature while awaiting a selection, but do not launch an unselected UI worker.
 
-- Tasks, dependencies, and any shared files or mutable resources.
-- Implementor harness and model, including per-task overrides when requested.
-- Review coverage and reviewer harness/model for each reviewed task.
-- Execution order and which independent tasks may overlap.
-- Batch boundaries and whether to commit after each completed task.
-- Existing tracking and outcome-log conventions, and how to use delegates' commit suggestions.
+## 2. Prepare the complete functional foundation
 
-Use the harness reference's discovery and model-selection instructions.
-Retain selections and full-access authorization already provided.
-Do not add a separate memory-settings question; preserve each harness's normal configuration unless the user requests a change.
+Capture the harness reference's initial ownership baseline before implementation.
+Implement the required backend and frontend logic yourself, including data structures, API integration, transformations, feature state, validation, permissions, and action handlers as applicable.
+Expose ready-to-use values and callbacks at the UI boundary, with clear types or contracts.
+Prepare the loading, empty, error, success, and disabled conditions that the requested feature needs.
+Verify this foundation with checks appropriate to the task before handing it off.
 
-**Ask about reviews unless the user explicitly declined them.**
-Support reviewing all tasks, selected tasks, or none, with different reviewers for different tasks.
-Do not treat an omitted reviewer assignment as permission to skip review.
-A review explicitly requested for a group or the combined result is its own checkpoint with a defined subject and dependencies.
+Do not leave the child to invent data shapes, fetch or persist business data, define feature state transitions, or finish application logic.
+The child may bind supplied values and callbacks to UI elements and implement presentation behavior such as focus, hover, and animation.
+Feature behavior and domain decisions remain yours even when their code lives in a UI file.
 
-**Propose parallel execution when independence is plausible, and obtain approval for the concrete schedule.**
-Consider shared edits, generated output, test databases, ports, and other mutable resources, not just task numbering.
-Serialize conflicting phases or use separate resources already supported by the project.
-When independence is uncertain, use sequential execution.
+Insert concise comment placeholders at the intended UI integration points using the file's native comment syntax.
+Give each placeholder a stable, searchable identifier and describe the UI's purpose, available data and state, callbacks, and required behavior.
+Keep the surrounding code valid and the supplied interface usable without choosing the child's visual design.
+When a comment is impractical, identify the existing component or symbol and the precise region to modify in the handoff instead.
+Use current line numbers as navigation aids alongside paths and stable anchors, since edits can move lines.
 
-Ask for a batch size only when the requested stopping boundary is missing.
-"The rest" or an explicit range without intermediate stops means the entire requested range.
-An approved concurrent batch must settle all its active task and review sessions before its confirmation boundary.
+## 3. Batch the UI handoff
 
-## 2. Select the review route
+Finish all parent-owned prerequisites for the requested scope, then send one consolidated prompt covering every UI integration point.
+Do not launch a separate UI session for each placeholder or file.
+Capture a handoff baseline so your implementation can be distinguished from the child's changes.
 
-For each reviewed task, check whether its implementor can invoke an installed, enabled `co-review` skill using the harness reference's discovery and invocation rules.
-Check the actual child environment; a skill visible to the orchestrator alone is insufficient.
-Do not install, rebuild, or reconfigure skills to make this route available.
+Use the harness reference's minimal-prompt and worktree instructions.
+Include only the execution context and UI contract the child needs:
 
-When usable, **prefer resuming the original implementor with co-review**.
-Tell the user that the implementor will run its selected reviewer and resolve the findings itself.
-Show this route in the plan table.
-The implementor keeps its task context and owns every fix.
+- The feature's user-facing purpose and observable behavior that must work.
+- Allowed files or regions, identified by path and placeholder, component, or symbol, with current line references where useful.
+- Available values, their shapes, state meanings, callbacks, and relevant interface definitions.
+- Required UI states, interactions, accessibility behavior, and any explicit user design requirements or supplied references.
+- The protected logic and interfaces, the missing-prerequisite return path, and the child's freedom to choose visual design.
 
-Otherwise use **orchestrator-mediated review**.
-Launch a separate reviewer, send it the implementor's final report and the review brief, and relay the exchange yourself.
-Both routes use the shared mutual-agreement protocol and the user's selected reviewer.
-Honor an explicit route preference.
+Express the boundary as an actionable instruction, for example:
 
-For a combined review, identify the author session responsible for responding and making any cross-task fixes before starting that checkpoint.
-Do not let two author sessions make competing integration fixes.
+> Implement the presentation for each integration point listed below using the supplied values and callbacks.
+> Locate each region by its file path and placeholder identifier or component symbol; line references are navigation aids.
+> Choose the layout, styling, typography, and visual treatment within the user's requirements and the project's applicable UI conventions.
+> Preserve the supplied data shapes, feature state, validation, permissions, API behavior, and action-handler semantics.
+> If an interface or behavior is missing, report the affected integration point, the required value or callback, and the interaction it must support; return that prerequisite to me instead of implementing it yourself or inventing substitute data.
+> Remove completed handoff placeholders and report any unfinished UI work or unmet prerequisites.
 
-## 3. Present the plan and get confirmation
+Follow this instruction with the actual integration-point list and contracts; do not send a generic brief without the task-specific details.
+Allow edits to necessary presentation assets or styles in the handoff scope, while explicitly protecting logic even in shared component files.
+Launch one UI implementor through the harness reference's managed process facility and retain its session ID.
+Wait for it to exit before inspecting its work or editing the handed-off regions.
 
-Present a readable Markdown table using actual task names and selected model display names.
-For example:
+## 4. Review functionality and supply missing prerequisites
 
-| Order / ready condition | Task | Depends on | Implementor | Reviewer | Review route |
-| --- | --- | --- | --- | --- | --- |
-| Start together ∥ | Task A | — | Selected model | Selected reviewer | co-review |
-| Start together ∥ | Task B | — | Selected model | None, as requested | — |
-| After A is done | Task C | A | Selected model | Different reviewer | Relayed |
+Read the child's final response and inspect its changes against the handoff baseline.
+Check that it preserved the supplied contracts and implemented the requested interactions, state rendering, callback bindings, and accessibility behavior.
+Run appropriate integration checks and exercise the resulting UI when possible.
+Review visual output only to establish that required content and controls are visible, usable, and functionally correct across required conditions.
 
-Below it, state the batch stopping points, commit policy, and full host access for the run, resumes, and nested reviews.
-Explain any shared-resource phases that must run sequentially.
-Ask for confirmation before the first launch.
-Reuse approval of this exact plan rather than asking again.
+Leave aesthetic decisions to the child.
+Do not redesign its work, impose your own taste, or request cosmetic revisions based on personal preference.
+Tie every requested correction to intended functionality, a protected contract, or an explicit user requirement; let the child choose the visual remedy.
 
-## 4. Execute the approved schedule
+If the child reports a missing prerequisite, implement it yourself and update the supplied contract before resuming the same session.
+Do not accept a mock, dead control, or altered data shape as a substitute for completing the feature.
+If the child changed protected logic, reconcile the task-owned changes using the ownership baseline, retain responsibility for that logic, and return only the remaining UI work to the child.
+Preserve unrelated changes throughout.
 
-Maintain a compact record per task:
+Batch functional findings and any newly prepared prerequisites into one follow-up to the same UI session with the same selected settings.
+Describe the affected integration points, expected behavior, and concrete evidence rather than prescribing a visual redesign.
+Repeat until the complete feature works, required UI states are covered, and no handoff placeholders or missing prerequisites remain.
+On launch or resume failure, follow the harness reference's recovery rules; preserve completed work and the session rather than silently switching models or taking over the UI design.
 
-- Task scope, dependencies, file/resource ownership, and selected settings.
-- Implementor session ID and, when applicable, reviewer session ID.
-- Review route, round, finding ledger or delegated review report, and response paths.
-- State: `waiting`, `implementing`, `reviewing`, `fixing`, `finalizing`, `done`, `blocked`, or `failed`.
+## 5. Deliver the complete feature
 
-Before a launch, capture the harness reference's ownership baseline.
-For tasks launched together, use the same initial batch boundary and record each task's ownership.
-Give each task and role separate run files.
-
-Build a minimal prompt from the user's task or its definition.
-Add only decisions needed for this execution: its review assignment, ownership, shared-resource coordination, and commit timing.
-Do not repeat automatically loaded agent instructions, ask it to read generic context documents, or restate routine reporting conventions.
-
-For concurrent work, include this brief instruction:
-
-> Other tasks are running in this checkout.
-> Unrelated changes are expected; leave them intact and do not stage or commit them.
-> Stay within this task's ownership and report an overlap so the conflicting phase can be serialized.
-
-Keep shared tracking writes and Git index operations serialized too.
-The implementor must wait for its commit turn even if its normal task instructions suggest committing immediately.
-
-Launch ready tasks through the parent's managed asynchronous facility.
-Listen to all active handles and process results as they arrive.
-Do not inspect streamed transcripts or read implementation source while waiting.
-
-A task enters review as soon as its implementor finishes, while independent tasks continue.
-Keep its author from editing the reviewed work during a reviewer round.
-A dependent task becomes ready only after its prerequisites have completed their assigned reviews, tracking, and required commits.
-No-review tasks proceed directly to finalization.
-
-## 5. Run the assigned review
-
-### Preferred route: implementor-managed co-review
-
-Resume the original implementor with the harness's explicit skill invocation.
-Pass the selected reviewer harness/model/effort/speed, task scope, and the approved execution constraints.
-Carry forward the run's full host authorization and any concurrency or commit restrictions.
-These are supplied user decisions, so the child must not ask the user to choose them again.
-
-The implementor runs co-review, owns the fixes and rebuttals, and returns the final mutual-agreement report.
-Keep the task in `reviewing` or `fixing` until the report accounts for every finding and confirms review of the final work.
-A report that merely says "implemented" or "no blockers" without settling open items is incomplete; resume the implementor to finish the exchange.
-
-If co-review cannot be loaded, retain the implementation and switch to the embedded relayed route with the same reviewer selection.
-Report the route change briefly.
-A harness, model, access, or quota failure follows the failure rules instead; changing routes must not bypass that failure.
-
-### Fallback route: relay the review exchange
-
-Launch the selected reviewer with the shared protocol's brief and reviewer instructions.
-Include the implementor's original final response as claims to verify, the task definition, and its ownership boundary.
-The reviewer has full evidence-gathering access but does not repair the work.
-
-After the reviewer exits:
-
-1. Send its findings and evidence to the same implementor session.
-   Ask for a response to every finding, accepted fixes, evidence for rebuttals, and a list of changes.
-2. Update the ledger from the implementor's response.
-3. Resume the same reviewer with that response and the ledger.
-   Require review of the affected final state and an explicit disposition for each item.
-4. Relay contested or new items back to the implementor and continue.
-
-Send even a clean initial review to the implementor for acceptance.
-If it accepts without changing the work, no extra reviewer round is needed.
-Any further edit to the reviewed work requires another reviewer round.
-
-You coordinate agreement; you do not decide that a finding is wrong, make a fix, or close an unanswered item yourself.
-Finish only when the shared mutual-agreement completion conditions hold.
-
-## 6. Finalize a task
-
-Confirm required implementation and review reports are complete before marking the task done.
-Verify its state-tracking convention.
-If tracking is missing or wrong, resume the same implementor to correct it; do not silently advance or edit its task content yourself.
-Bookkeeping outside the review subject may follow sign-off; changes to reviewed work require re-review.
-
-Write a concise outcome record in the agreed location: what completed, review disposition, response paths, and any remaining verification or user action.
-Distinguish verified review conclusions from an unreviewed implementor's own report.
-
-If commits were approved, commit only after the task's review is resolved.
-For sequential work, stage and commit only changes proven to belong to that task.
-For concurrent work, resume the original implementor for its own commit and serialize these follow-ups so they cannot race over the shared index.
-Preserve pre-existing and other agents' changes, use the agreed commit-message convention, and record the commit hash.
-Do not create commits when the run's policy does not authorize them.
-
-Report the task's outcome briefly and launch newly ready work within the approved batch.
-
-## 7. Boundaries, blockers, and failures
-
-At a batch boundary, let every already-started task and review in that batch settle.
-Show a consolidated table with task status, review status, outcome or blocker, and commit when applicable.
-Link the outcome records, identify the next tasks, and wait for the user's continuation before launching another batch.
-
-If a task needs a user decision, stop launching new work.
-Let already-active independent sessions settle, record all results, and present the blocking question without answering it on the user's behalf.
-Resume the same affected session after the answer.
-Do not start dependent work or call the task complete while blocked.
-
-On process failure, preserve work and session IDs, materialize the bounded diagnostic using the harness reference, and stop new launches.
-Do not skip the failed task, silently change models, or take over its implementation or review.
-When a supplied full-access launch was accidentally restricted, correct the launch to the already-authorized settings and resume; no new permission question is needed.
-An actual host-policy rejection, missing credential, or unavailable service remains a real blocker.
+Verify the final integrated feature after the last changes and distinguish completed checks from anything that could not be verified.
+Report the parent-owned functionality, delegated UI work, selected UI implementor, final response path, and any remaining limitation.
+Do not claim completion while required functionality or UI work remains unfinished.
+Follow the user's commit-message convention for the complete task change and commit only when authorized.
 
 ## Harness CLI reference
 
@@ -564,126 +474,3 @@ An enforced denial is not a reason to clear security settings or bypass a host c
 In orchestration, stop new launches and settle already-active work before presenting blockers.
 Preserve completed implementation, review ledgers, and resumable sessions.
 Cancel through the managed handle or a verified task-specific process ID; do not use a broad name-based kill.
-
-## Review protocol
-
-Use this protocol when assessing an implementation, plan, or other task output.
-The skill assigns the roles and the completion rule:
-
-| Workflow | Author | Reviewer | Coordinator | Completion |
-| --- | --- | --- | --- | --- |
-| co-implement | Child implementor | Parent | Parent | Supervisor sign-off |
-| co-review | Parent | Child reviewer | Parent | Mutual agreement |
-| orchestrate, relayed review | Child implementor | Child reviewer | Orchestrator | Mutual agreement |
-| orchestrate, delegated co-review | Original implementor running co-review | Its child reviewer | Orchestrator tracks completion | Mutual agreement |
-
-The author owns fixes.
-The reviewer independently assesses the work.
-A coordinator that is neither author nor reviewer routes their reports and tracks resolution without deciding technical findings itself.
-
-### Review brief
-
-Give the reviewer the task, its constraints, the task-owned changed-file list, and the author's completion report when available.
-Include task or specification paths supplied by the user; preserve their scope.
-Treat the completion report as claims to check against the actual work.
-Do not seed the review with the coordinator's suspicions or copy instructions the child normally loads.
-
-Add only these review-specific instructions:
-
-- Inspect the actual work and relevant dependencies against the task's requirements.
-- Report defects, missing requirements, regressions, and unsupported completion claims.
-- Do not repair the work, edit task definitions or tracking, or stage or commit.
-- Give numbered findings with location, consequence, evidence, and what would resolve the issue.
-- Separate blocking defects from judgment calls.
-- State when no findings remain.
-- Assess rebuttals independently and explicitly accept a convincing correction.
-
-Both participants may use the harness's normal tools and authorized services to gather evidence.
-Review is a role restriction, not a reason to remove shell, network, database, or browser capabilities.
-Run checks appropriate to the work; documentation-only work does not call for code tests.
-
-### Evidence and responses
-
-Neither participant treats the other's report as proof.
-Read the relevant work, reproduce claimed failures when practical, and distinguish observations from inferences.
-Consider skipped requirements, integration behavior, error paths, and unintended scope changes.
-Avoid speculative findings or changes justified only by personal taste.
-
-For each finding, the author chooses one response:
-
-| Response | Required action |
-| --- | --- |
-| Confirmed | Fix it and report the change and verification |
-| Rejected | Give evidence explaining why the finding is incorrect |
-| Judgment call | State the chosen approach and its trade-off |
-
-Invite pushback in both directions.
-Accept the stronger evidence, regardless of which agent supplied it.
-A finding's severity does not determine whether it has been resolved.
-
-### Mutual-agreement loop
-
-Use this loop for co-review and every orchestration review.
-Keep stable finding IDs and a compact ledger with these states:
-
-- `open`
-- `fixed-awaiting-review`
-- `rebutted-awaiting-response`
-- `closed-both-agreed`
-
-1. The reviewer returns its findings.
-2. The author verifies each finding, makes the fixes it accepts, and answers every item.
-3. Send the updated ledger and the author's response to the same reviewer session.
-   Include all edits since its last review, including changes it did not request.
-4. The reviewer inspects the current work, checks the fixes for regressions, and explicitly closes or contests each item by ID.
-5. Return any contested or new findings to the same author session and repeat.
-
-Preserve both session IDs throughout the exchange.
-When a coordinator relays messages, pass the participants' final reports and evidence faithfully; do not substitute the coordinator's technical verdict.
-Compact repeated history into the ledger, but retain unresolved arguments and evidence.
-
-Every edit after a review requires another review of the affected final state.
-A rejection remains open until the reviewer explicitly accepts the rebuttal.
-Silence, a lower severity, or a general "no blockers" statement does not close an unaddressed item.
-Retain mutually closed items with their resolution so they do not disappear from the record.
-
-Completion requires every item to be `closed-both-agreed`, the author's acceptance of the final disposition, and a reviewer verdict covering the final task state.
-A clean first review that the author verifies and accepts needs no extra round.
-If another task changes a relevant dependency after sign-off, recheck the affected conclusions before treating them as final.
-
-### Supervisor sign-off
-
-For co-implement, the parent reviewer independently checks the task-owned diff and completion claims.
-Send substantive defects and contestable choices back to the same implementor session.
-Re-review its subsequent changes until no blocking issue remains.
-
-The supervisor may directly fix an obvious, uncontested mistake.
-If that clears the last issue, verify and sign off without another delegate round.
-If another round is needed, tell the implementor what the supervisor changed.
-This exception does not apply to the mutual-agreement loop.
-
-### Protect ownership during review
-
-Use the content baselines and ownership rules in the harness reference.
-The author pauses edits to the reviewed task while its reviewer runs.
-Independent tasks may continue only where their files and mutable resources do not conflict with that review.
-
-After review, check for unintended changes to the reviewed work.
-In a shared checkout, other agents' expected changes are not reviewer edits.
-Never restore a repository-wide snapshot over concurrent work.
-Undo only a delta proven to belong to the reviewer; if ownership cannot be established, preserve the files and resolve the conflict before continuing.
-
-In a single-writer workflow, stage only reviewed task-owned hunks when that gives the next round a useful diff boundary.
-Leave mixed-ownership paths unstaged when separation is uncertain.
-During parallel work, keep the shared index unchanged until the coordinator grants a serialized staging or commit turn.
-
-### Decisions and close-out
-
-Continue technical discussion autonomously while the participants are making progress.
-Ask the user only for a requirement, scope, or consequential product decision the task does not answer, or a disagreement the participants cannot reconcile with evidence.
-Present both positions and the remaining question; preserve the sessions for resumption.
-Do not call an unresolved exchange complete.
-
-Report the outcome, accepted fixes, accepted rebuttals, checks actually performed, and any remaining limitation.
-For mutual-agreement reviews, include the final ledger and both participants' explicit disposition.
-Keep reports concise and reference the final response files rather than streamed transcripts.

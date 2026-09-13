@@ -6,7 +6,7 @@ Install all skills globally for Codex and Claude Code, using `~/.agents/skills/`
 npx skills@latest add nOji/skills --skill '*' --agent codex --agent claude-code --global --yes
 ```
 
-Three user-invoked [Agent Skills](https://agentskills.io/) for delegating coding work to Codex, Claude Code, or Cursor Agent.
+A collection of user-invoked [Agent Skills](https://agentskills.io/) for delegating coding work to Codex, Claude Code, or Cursor Agent.
 
 This repository is designed for installation through Vercel's [`skills` CLI](https://github.com/vercel-labs/skills).
 It is a GitHub-hosted skill collection, not an npm package and not a native Claude Code plugin.
@@ -20,6 +20,7 @@ It is a GitHub-hosted skill collection, not an npm package and not a native Clau
 | --- | --- |
 | [`co-implement`](./skills/co-implement/SKILL.md) | Delegates one implementation to a child coding-agent CLI, then reviews and iterates on the result. |
 | [`co-review`](./skills/co-review/SKILL.md) | Requests an independent review, verifies each finding, and iterates until both agents agree or a user decision is required. |
+| [`delegate-ui`](./skills/delegate-ui/SKILL.md) | Keeps feature logic with the parent, delegates presentation and visual design to a child agent, and checks functional integration. |
 | [`orchestrate`](./skills/orchestrate/SKILL.md) | Runs an ordered queue of delegated tasks in user-approved batches without acting as the implementer or reviewer. |
 
 Each skill is designed for explicit user invocation, and the bundled Codex policy disables implicit invocation.
@@ -27,7 +28,7 @@ Invoke it using the syntax supported by your agent, such as `$co-review` in Code
 
 ## Installation
 
-Inspect the three available skills without installing them:
+Inspect the available skills without installing them:
 
 ```bash
 npx skills@latest add nOji/skills --list
@@ -45,7 +46,7 @@ Install one skill:
 npx skills@latest add nOji/skills@co-review
 ```
 
-Install all three globally for Codex without prompts:
+Install all skills globally for Codex without prompts:
 
 ```bash
 npx skills@latest add nOji/skills --skill '*' --agent codex --global --yes
@@ -93,6 +94,7 @@ src/
   skill-definitions/
     co-implement.md
     co-review.md
+    delegate-ui.md
     orchestrate.md
 
 skills/                              # Generated and committed
@@ -103,13 +105,19 @@ skills/                              # Generated and committed
     cursor.md
     agents/openai.yaml
   co-review/
+    SKILL.md                         # Definition plus embedded shared modules
+    codex.md
+    claude.md
+    cursor.md
+    agents/openai.yaml
+  delegate-ui/
     SKILL.md                         # Definition plus embedded harness
     codex.md
     claude.md
     cursor.md
     agents/openai.yaml
   orchestrate/
-    SKILL.md                         # Definition plus embedded harness
+    SKILL.md                         # Definition plus embedded shared modules
     codex.md
     claude.md
     cursor.md
@@ -119,20 +127,22 @@ skills/                              # Generated and committed
 `src/harness-cli.md` is the single source of truth for shared command forms.
 `src/review-protocol.md` is the single source of truth for review evidence, dialogue, ownership, and completion.
 The three parent-agent guides contain only behavior that changes because Codex, Claude Code, or Cursor loaded the skill; commands for invoking those products as child harnesses remain in `src/harness-cli.md`.
-Before a release, an AI agent first compares Git history and uncommitted changes to determine whether the generated output is stale.
+Before a release, an AI agent inventories every canonical skill definition, then compares Git history and uncommitted changes to determine which outputs are missing or stale.
 When regeneration is needed, it combines each canonical definition with its required harness and review modules inside the generated `SKILL.md` and copies all three parent-agent guides beside it.
 Each generated entrypoint directs Codex, Claude Code, or Cursor to read exactly the one parent guide that matches itself.
 There is intentionally no committed build script or injection marker, so formatting may vary between release-preparation runs while the complete source meaning must remain intact.
-The publishable distribution contains exactly the three skills shown above.
+Every definition under `src/skill-definitions/` is publishable, and its canonical name determines its generated directory and public entrypoint.
+The source inventory determines the complete public skill set, so new definitions are included without updating a fixed release allowlist.
+Shared modules are included according to each definition's workflow; delegate-ui embeds the harness and retains its own functional review rules.
 
 ## Maintainer workflow
 
 1. Edit `src/harness-cli.md`, `src/review-protocol.md`, one of the three parent-agent guides, `src/explicit-only.openai.yaml`, or a file under `src/skill-definitions/`.
 2. Invoke the repository owner's project-local `prepare-skill-release` skill.
-3. Let that agent inspect both Git history and uncommitted changes and skip regeneration when the distribution is already semantically aligned.
-4. When regeneration is needed, let the agent combine the canonical inputs semantically, copy the parent-agent guides, and replace the three generated skill directories.
+3. Let that agent inventory every source definition, inspect both Git history and uncommitted changes, and skip regeneration for outputs that are already semantically aligned.
+4. When generation is needed, let the agent combine the canonical inputs semantically, copy the parent-agent guides, and create missing or refresh stale generated skill directories.
 5. Review the canonical and generated diff carefully because generation is intentionally agent-driven rather than byte-deterministic.
-6. Confirm `npx skills@latest add . --list` reports exactly the three public skills.
+6. Confirm the skill names reported by `npx skills@latest add . --list` exactly match the complete canonical source inventory, with no missing or extra entrypoints.
 7. Commit both the source changes and any regenerated `skills/` output.
 
 During ordinary development, never edit `skills/` directly.
@@ -160,7 +170,7 @@ git push -u origin main
 npx skills@latest add nOji/skills --list
 ```
 
-The result should contain exactly `co-implement`, `co-review`, and `orchestrate`.
+The discovered skill names should exactly match the canonical definitions in the published revision, with no missing or extra entrypoints.
 
 5. Smoke-test an actual copy install in a disposable directory:
 
