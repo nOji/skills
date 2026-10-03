@@ -187,8 +187,10 @@ Plan mode changes the deliverable and is not a substitute for review.
 
 Pass the user's task and only missing execution-specific context: task scope, selected reviewer, approved access, ownership, concurrency, and coordination boundaries.
 Include a task document when the user named it.
-Do not append generic requests to read `AGENTS.md`, `CLAUDE.md`, context documents, or conventions the child normally discovers.
-Do not restate routine commit-message or reporting instructions already provided by the user's environment.
+Treat applicable base prompts and global/project instruction files as available through each child's normal loading mechanisms.
+Do not copy, summarize, repeat, or add reminders to read these instructions unless the user explicitly asks.
+Apply this rule to launches, resumes, and nested delegation, while preserving each harness's own normal configuration.
+Pass runtime decisions the child does not already have; do not restate inherited conventions.
 Ask for an extra report field only when the workflow needs it and it is otherwise missing.
 
 When delegating a skill, put the explicit invocation at the beginning of the child's user prompt:

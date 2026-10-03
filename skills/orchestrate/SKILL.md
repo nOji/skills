@@ -7,8 +7,11 @@ description: Run an existing task series through Codex, Claude Code, or Cursor A
 
 You coordinate execution, review exchanges, tracking, and authorized commits.
 Child agents implement and review.
-Do not study implementation source or decide technical findings yourself.
-Use task definitions, dependency information, ownership metadata, tracking files, and final agent reports.
+Read only instructions governing the run, task or plan documents, dependency and ownership records, orchestration/session tracking, and final agent reports or bounded diagnostics after the relevant process exits.
+Do not read implementation modules, tests, source diffs, or produced artifacts, including after a child exits.
+Do not reason through the implementation, verify technical claims yourself, or decide technical findings.
+Delegate source inspection, implementation decisions, verification, and content-based ownership checks to the appropriate implementor or reviewer.
+Mechanical Git metadata, process/session identifiers, and ownership-baseline capture are allowed; keep source and patch content out of your context.
 
 Read the [harness reference](#harness-cli-reference) before running children and the [review protocol](#review-protocol) for reviewed tasks.
 Read only the adjacent parent guide matching the agent that loaded this skill: `codex.md`, `claude.md`, or `cursor.md`.
@@ -23,8 +26,8 @@ Resolve only missing decisions:
 - Implementor harness and model, including per-task overrides when requested.
 - Review coverage and reviewer harness/model for each reviewed task.
 - Execution order and which independent tasks may overlap.
-- Batch boundaries and whether to commit after each completed task.
-- Existing tracking and outcome-log conventions, and how to use delegates' commit suggestions.
+- Step and batch boundaries, and any override to the default commit policy.
+- Existing tracking, outcome-log, and commit conventions.
 
 Use the harness reference's discovery and model-selection instructions.
 Retain selections and full-access authorization already provided.
@@ -35,6 +38,14 @@ Support reviewing all tasks, selected tasks, or none, with different reviewers f
 Do not treat an omitted reviewer assignment as permission to skip review.
 A review explicitly requested for a group or the combined result is its own checkpoint with a defined subject and dependencies.
 
+**Default to staging and committing after each completed orchestration step.**
+A step normally contains one task's implementation and all its assigned reviews.
+When tasks share a required combined review, group them into one step and designate an implementor to finalize it.
+A step is ready to commit only when implementation, required reviews, and tracking are complete, every finding is resolved, and no blocker or required user decision remains.
+Include this policy in the pre-run confirmation so the user's explicit approval authorizes those commits.
+Honor an explicit no-commit instruction or another user-selected policy; do not infer its reversal from a general request to orchestrate.
+This policy authorizes local commits only, not pushes.
+
 **Propose parallel execution when independence is plausible, and obtain approval for the concrete schedule.**
 Consider shared edits, generated output, test databases, ports, and other mutable resources, not just task numbering.
 Serialize conflicting phases or use separate resources already supported by the project.
@@ -43,6 +54,7 @@ When independence is uncertain, use sequential execution.
 Ask for a batch size only when the requested stopping boundary is missing.
 "The rest" or an explicit range without intermediate stops means the entire requested range.
 An approved concurrent batch must settle all its active task and review sessions before its confirmation boundary.
+Place batch boundaries between complete steps so a required combined review and its commit are not split across a stopping point.
 
 ## 2. Select the review route
 
@@ -65,25 +77,36 @@ Do not let two author sessions make competing integration fixes.
 
 ## 3. Present the plan and get confirmation
 
-Present a readable Markdown table using actual task names and selected model display names.
+Use a compact table for the schedule and a short emoji summary for the run conditions.
+Use actual task names and selected model display names, with effort and speed where applicable.
+Show review coverage and route explicitly; do not leave an omitted reviewer looking like an approved no-review choice.
 For example:
 
-| Order / ready condition | Task | Depends on | Implementor | Reviewer | Review route |
-| --- | --- | --- | --- | --- | --- |
-| Start together ∥ | Task A | — | Selected model | Selected reviewer | co-review |
-| Start together ∥ | Task B | — | Selected model | None, as requested | — |
-| After A is done | Task C | A | Selected model | Different reviewer | Relayed |
+**Proposed orchestration**
 
-Below it, state the batch stopping points, commit policy, and full host access for the run, resumes, and nested reviews.
-Explain any shared-resource phases that must run sequentially.
-Ask for confirmation before the first launch.
+| Step / ready condition | Task(s) | Implementor | Review |
+| --- | --- | --- | --- |
+| A · start ∥ | Task A | Selected model · effort · speed | Selected reviewer · co-review |
+| B · start ∥ | Task B | Selected model · effort · speed | None, as requested |
+| C · after A commits | Task C | Selected model · effort · speed | Different reviewer · relayed |
+
+- 🗂️ **Workspace / reads:** `<absolute workspace>`; orchestration documents and post-exit reports only.
+- 💾 **Commits:** stage + commit each completed step after its reviews are resolved and no blockers remain; no pushes.
+- ⏳ **Waiting:** idle until any child process exits; report outcomes and blockers.
+- 🛑 **Stop:** after Task C; settle every active session before requesting continuation.
+- 🔓 **Access:** full host access for launches, resumes, and nested reviews.
+
+Replace the example's conditions with the actual policy, including disabled commits or restricted access when requested.
+Identify grouped steps and their finalizer, and explain any shared-resource phases that must run sequentially.
+Keep the confirmation brief; add detail only for a choice or exception that changes the run.
+Ask one plain-text confirmation question before the first launch, explicitly including the displayed commit policy.
 Reuse approval of this exact plan rather than asking again.
 
 ## 4. Execute the approved schedule
 
 Maintain a compact record per task:
 
-- Task scope, dependencies, file/resource ownership, and selected settings.
+- Task scope, dependencies, owning step, file/resource ownership, and selected settings.
 - Implementor session ID and, when applicable, reviewer session ID.
 - Review route, round, finding ledger or delegated review report, and response paths.
 - State: `waiting`, `implementing`, `reviewing`, `fixing`, `finalizing`, `done`, `blocked`, or `failed`.
@@ -94,7 +117,9 @@ Give each task and role separate run files.
 
 Build a minimal prompt from the user's task or its definition.
 Add only decisions needed for this execution: its review assignment, ownership, shared-resource coordination, and commit timing.
-Do not repeat automatically loaded agent instructions, ask it to read generic context documents, or restate routine reporting conventions.
+Treat applicable base prompts and global/project instruction files as available through the child's normal loading mechanisms.
+Do not copy, summarize, repeat, or add reminders to read those instructions unless the user explicitly asks.
+Apply the same rule to resumes and nested agents; pass execution-specific decisions the child does not already have.
 
 For concurrent work, include this brief instruction:
 
@@ -106,13 +131,22 @@ Keep shared tracking writes and Git index operations serialized too.
 The implementor must wait for its commit turn even if its normal task instructions suggest committing immediately.
 
 Launch ready tasks through the parent's managed asynchronous facility.
-Listen to all active handles and process results as they arrive.
-Do not inspect streamed transcripts or read implementation source while waiting.
+Once all currently ready launches are dispatched, remain idle until at least one active managed process exits or the user supplies new input.
+Wait for any active handle, not for the entire batch or just the first process launched.
+If the facility only supports bounded per-handle waits, cycle blocking waits across the active handles using lifecycle status alone.
+A timeout or still-running status means re-enter the wait; it does not justify another progress message or inspection.
+Do not poll files, Git changes, tracking documents, response-file existence, or streamed transcripts to infer progress.
+Do not narrate unchanged status, elapsed time, observed edits, or the absence of a response.
+After an exit, read only that process's final response or bounded failure diagnostic, update the orchestration record, and dispatch any newly ready implementation, review, or finalization work.
+Then return to the idle wait while other processes remain active.
+User input may interrupt the wait for steering, cancellation, or an explicit status request.
 
-A task enters review as soon as its implementor finishes, while independent tasks continue.
+A task enters its individual review as soon as its implementor finishes, while independent tasks continue.
+A combined review starts only after every included implementation and any prerequisite individual review is complete.
 Keep its author from editing the reviewed work during a reviewer round.
-A dependent task becomes ready only after its prerequisites have completed their assigned reviews, tracking, and required commits.
-No-review tasks proceed directly to finalization.
+A dependent step becomes ready only after its prerequisites have completed their assigned reviews, tracking, and required commits.
+For ordered tasks inside a combined-review step, explicitly approve which completed implementations unlock the next internal task; downstream steps still wait for the whole step to finish.
+Tasks with no assigned review proceed directly to finalization unless their step still requires a combined review.
 
 ## 5. Run the assigned review
 
@@ -153,23 +187,28 @@ Any further edit to the reviewed work requires another reviewer round.
 You coordinate agreement; you do not decide that a finding is wrong, make a fix, or close an unanswered item yourself.
 Finish only when the shared mutual-agreement completion conditions hold.
 
-## 6. Finalize a task
+## 6. Finalize and commit a step
 
-Confirm required implementation and review reports are complete before marking the task done.
-Verify its state-tracking convention.
-If tracking is missing or wrong, resume the same implementor to correct it; do not silently advance or edit its task content yourself.
+Confirm that every task in the step has complete implementation and required review reports, with no unresolved finding, blocker, or required user decision.
+Confirm its state-tracking convention from the permitted tracking records and agent reports.
+If tracking is missing or wrong, resume the responsible implementor to correct it; do not silently advance or edit its task content yourself.
 Bookkeeping outside the review subject may follow sign-off; changes to reviewed work require re-review.
 
 Write a concise outcome record in the agreed location: what completed, review disposition, response paths, and any remaining verification or user action.
 Distinguish verified review conclusions from an unreviewed implementor's own report.
 
-If commits were approved, commit only after the task's review is resolved.
-For sequential work, stage and commit only changes proven to belong to that task.
-For concurrent work, resume the original implementor for its own commit and serialize these follow-ups so they cannot race over the shared index.
-Preserve pre-existing and other agents' changes, use the agreed commit-message convention, and record the commit hash.
-Do not create commits when the run's policy does not authorize them.
+When the approved policy calls for a commit, resume the original implementor, or the designated finalizer for a grouped step, to stage and commit only changes proven to belong to that step.
+Use this delegated finalization for sequential and concurrent runs; do not inspect the source diff or perform the content-based staging yourself.
+Serialize all staging and commit follow-ups so they cannot race over the shared index.
+Have the finalizer preserve pre-existing and other agents' changes and return the commit hash and ownership summary.
+Use inherited commit conventions without repeating them in the prompt.
+If ownership cannot be established, keep the step blocked instead of guessing or staging broadly.
+If there are no step-owned changes, record that outcome without creating an empty commit.
+When the approved policy disables commits, skip the staging/commit follow-up and record that policy.
+If a commit is required, keep the step in `finalizing` until it succeeds or a no-change outcome is established; a commit failure is a blocker.
 
-Report the task's outcome briefly and launch newly ready work within the approved batch.
+Mark the step done only after its required finalization is complete.
+Report its outcome briefly and launch newly ready work within the approved batch.
 
 ## 7. Boundaries, blockers, and failures
 
@@ -310,8 +349,10 @@ Plan mode changes the deliverable and is not a substitute for review.
 
 Pass the user's task and only missing execution-specific context: task scope, selected reviewer, approved access, ownership, concurrency, and coordination boundaries.
 Include a task document when the user named it.
-Do not append generic requests to read `AGENTS.md`, `CLAUDE.md`, context documents, or conventions the child normally discovers.
-Do not restate routine commit-message or reporting instructions already provided by the user's environment.
+Treat applicable base prompts and global/project instruction files as available through each child's normal loading mechanisms.
+Do not copy, summarize, repeat, or add reminders to read these instructions unless the user explicitly asks.
+Apply this rule to launches, resumes, and nested delegation, while preserving each harness's own normal configuration.
+Pass runtime decisions the child does not already have; do not restate inherited conventions.
 Ask for an extra report field only when the workflow needs it and it is otherwise missing.
 
 When delegating a skill, put the explicit invocation at the beginning of the child's user prompt:
