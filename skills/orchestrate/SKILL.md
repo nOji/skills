@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Run an existing task series through Codex, Claude Code, or Cursor Agent with an approved dependency schedule, optional parallel execution, per-task reviewers, and coordinated review and commit completion.
+description: Run an existing task series through Codex, Claude Code, or Cursor Agent with an approved dependency schedule, optional parallel execution, opt-in reviews, and commits after completed steps.
 ---
 
 # Coordinate a task series
@@ -24,19 +24,24 @@ Resolve only missing decisions:
 
 - Tasks, dependencies, and any shared files or mutable resources.
 - Implementor harness and model, including per-task overrides when requested.
-- Review coverage and reviewer harness/model for each reviewed task.
+- Only for requested reviews: coverage and reviewer harness/model.
 - Execution order and which independent tasks may overlap.
 - Step and batch boundaries, and any override to the default commit policy.
 - Existing tracking, outcome-log, and commit conventions.
 
-Use the harness reference's discovery and model-selection instructions.
+Use the harness reference's discovery and model-selection instructions only for implementors and explicitly requested reviewers.
 Retain selections and full-access authorization already provided.
-Do not add a separate memory-settings question; preserve each harness's normal configuration unless the user requests a change.
+Keep successful discovery and preservation of normal configuration silent.
+Do not inspect, announce, or ask about memory settings unless the user requested that information or a change, or a specific launch failure requires it.
+Leave task-level product decisions to the implementor unless the requested plan makes them a prerequisite to starting the run.
 
-**Ask about reviews unless the user explicitly declined them.**
-Support reviewing all tasks, selected tasks, or none, with different reviewers for different tasks.
-Do not treat an omitted reviewer assignment as permission to skip review.
-A review explicitly requested for a group or the combined result is its own checkpoint with a defined subject and dependencies.
+**Reviews are opt-in; the default is OFF.**
+If the user did not explicitly request reviews for this run, set `Review: OFF · not requested` and skip reviewer discovery, selection, skill-availability checks, and launches.
+Do not ask whether to add reviews or propose a reviewer by default.
+An available `co-review` skill, a selected implementor model, or generic review guidance does not authorize reviews.
+A review checkpoint explicitly included in the task series the user asked to execute counts as requested; ordinary implementor verification does not.
+For requested reviews, support all tasks, selected tasks, or a combined checkpoint, with different reviewers when requested.
+Resolve only missing reviewer choices; do not automatically reuse the implementor's model or broaden the requested coverage.
 
 **Default to staging and committing after each completed orchestration step.**
 A step normally contains one task's implementation and all its assigned reviews.
@@ -51,20 +56,20 @@ Consider shared edits, generated output, test databases, ports, and other mutabl
 Serialize conflicting phases or use separate resources already supported by the project.
 When independence is uncertain, use sequential execution.
 
-Ask for a batch size only when the requested stopping boundary is missing.
-"The rest" or an explicit range without intermediate stops means the entire requested range.
+Default to running the entire requested task series and stopping at its end.
+Use an intermediate batch boundary only when the user supplied one; do not add a batch-size question by default.
 An approved concurrent batch must settle all its active task and review sessions before its confirmation boundary.
 Place batch boundaries between complete steps so a required combined review and its commit are not split across a stopping point.
 
 ## 2. Select the review route
 
+Skip this section when reviews are OFF.
 For each reviewed task, check whether its implementor can invoke an installed, enabled `co-review` skill using the harness reference's discovery and invocation rules.
 Check the actual child environment; a skill visible to the orchestrator alone is insufficient.
 Do not install, rebuild, or reconfigure skills to make this route available.
 
 When usable, **prefer resuming the original implementor with co-review**.
-Tell the user that the implementor will run its selected reviewer and resolve the findings itself.
-Show this route in the plan table.
+Show this route in the confirmation's Review field without an explanatory paragraph.
 The implementor keeps its task context and owns every fix.
 
 Otherwise use **orchestrator-mediated review**.
@@ -77,29 +82,29 @@ Do not let two author sessions make competing integration fixes.
 
 ## 3. Present the plan and get confirmation
 
-Use a compact table for the schedule and a short emoji summary for the run conditions.
-Use actual task names and selected model display names, with effort and speed where applicable.
-Show review coverage and route explicitly; do not leave an omitted reviewer looking like an approved no-review choice.
-For example:
+Resolve genuinely missing run choices first with a concise plain-text question; do not combine an unresolved choice with approval of an incomplete run.
+Confirm before launch.
+Use exactly the following eight Markdown list fields, in this order, followed by one short plain-text confirmation question.
+This is the required format, not an expandable example.
+Keep the entire confirmation within 120 words, excluding link targets.
+Do not add a heading, task table, introductory or closing narration, repeated model settings, or unrequested configuration details.
 
-**Proposed orchestration**
+- 🎯 **Scope:** <plan link> · <requested task range>
+- 📁 **Workspace:** <absolute path>
+- 🤖 **Implementor:** <harness/model> · <effort> · <speed>
+- 🔍 **Review:** OFF · not requested
+- 🔀 **Schedule / stop:** <dependency order or parallel groups> · <stopping boundary>
+- 💾 **Commit:** each completed step · no pushes
+- 🔓 **Access:** <full host or requested restrictions>
+- ⏳ **Wait / reads:** any child exit · quiet otherwise · plan/session documents + final reports
 
-| Step / ready condition | Task(s) | Implementor | Review |
-| --- | --- | --- | --- |
-| A · start ∥ | Task A | Selected model · effort · speed | Selected reviewer · co-review |
-| B · start ∥ | Task B | Selected model · effort · speed | None, as requested |
-| C · after A commits | Task C | Selected model · effort · speed | Different reviewer · relayed |
+Approve this run and per-step local commits?
 
-- 🗂️ **Workspace / reads:** `<absolute workspace>`; orchestration documents and post-exit reports only.
-- 💾 **Commits:** stage + commit each completed step after its reviews are resolved and no blockers remain; no pushes.
-- ⏳ **Waiting:** idle until any child process exits; report outcomes and blockers.
-- 🛑 **Stop:** after Task C; settle every active session before requesting continuation.
-- 🔓 **Access:** full host access for launches, resumes, and nested reviews.
-
-Replace the example's conditions with the actual policy, including disabled commits or restricted access when requested.
-Identify grouped steps and their finalizer, and explain any shared-resource phases that must run sequentially.
-Keep the confirmation brief; add detail only for a choice or exception that changes the run.
-Ask one plain-text confirmation question before the first launch, explicitly including the displayed commit policy.
+Replace field values with the actual run settings; show requested review coverage, reviewer settings, and route only in the Review field.
+Adapt the Commit field and question to an explicit commit-policy override.
+Keep complete task names, per-task overrides, grouped-step finalizers, and shared-resource constraints in the orchestration record; link that record from the relevant field when the settings cannot fit.
+Use the established tracking location or the harness's locally ignored run directory for that record.
+If higher-priority instructions require an approval-source explanation, append only one short sentence and include it in the same word limit.
 Reuse approval of this exact plan rather than asking again.
 
 ## 4. Execute the approved schedule
@@ -141,7 +146,7 @@ After an exit, read only that process's final response or bounded failure diagno
 Then return to the idle wait while other processes remain active.
 User input may interrupt the wait for steering, cancellation, or an explicit status request.
 
-A task enters its individual review as soon as its implementor finishes, while independent tasks continue.
+A task with an assigned individual review enters it as soon as its implementor finishes, while independent tasks continue.
 A combined review starts only after every included implementation and any prerequisite individual review is complete.
 Keep its author from editing the reviewed work during a reviewer round.
 A dependent step becomes ready only after its prerequisites have completed their assigned reviews, tracking, and required commits.
@@ -149,6 +154,8 @@ For ordered tasks inside a combined-review step, explicitly approve which comple
 Tasks with no assigned review proceed directly to finalization unless their step still requires a combined review.
 
 ## 5. Run the assigned review
+
+Apply this section only to explicitly requested reviews.
 
 ### Preferred route: implementor-managed co-review
 
