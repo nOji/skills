@@ -1,7 +1,7 @@
 # Claude Code parent guidance
 
 Apply this guide only when Claude Code loaded the skill.
-Child CLI settings remain in the embedded harness reference.
+Use it only when the skill selected harness CLIs as its child runtime; child CLI settings remain in the adjacent `harness-cli.md`.
 
 Run child CLIs through the parent's approved unsandboxed Bash path.
 When the Bash tool exposes `dangerouslyDisableSandbox` and the parent sandbox would restrict the run, use it with the existing full-access authorization.

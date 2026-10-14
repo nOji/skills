@@ -1,7 +1,7 @@
 # Cursor parent guidance
 
 Apply this guide only when Cursor loaded the skill.
-Child CLI settings remain in the embedded harness reference.
+Use it only when the skill selected harness CLIs as its child runtime; child CLI settings remain in the adjacent `harness-cli.md`.
 
 Use Cursor's approved host execution path so an outer terminal sandbox does not restrict the child CLI.
 Carry existing full-access authorization through launches, resumes, and nested reviews.

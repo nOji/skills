@@ -1,7 +1,7 @@
 # Codex parent guidance
 
 Apply this guide only when Codex loaded the skill.
-Child CLI settings remain in the embedded harness reference.
+Use it only when the skill selected harness CLIs as its child runtime; child CLI settings remain in the adjacent `harness-cli.md`.
 
 Use Codex's approved host command path for child discovery, launches, resumes, and lifecycle operations.
 If the parent command tool is sandboxed, set `sandbox_permissions: "require_escalated"` and give a task-specific justification referring to the authorized run.
