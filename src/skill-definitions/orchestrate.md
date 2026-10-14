@@ -13,9 +13,8 @@ Do not reason through the implementation, verify technical claims yourself, or d
 Delegate source inspection, implementation decisions, verification, and content-based ownership checks to the appropriate implementor or reviewer.
 Mechanical Git metadata, process/session identifiers, and ownership-baseline capture are allowed; keep source and patch content out of your context.
 
-Read the [harness reference](#harness-cli-reference) before running children and the [review protocol](#review-protocol) for reviewed tasks.
-Read only the adjacent parent guide matching the agent that loaded this skill: `codex.md`, `claude.md`, or `cursor.md`.
-For another parent, use its native managed asynchronous process facility.
+Before running children, choose their runtime in the [child runtime](#child-runtime) section and follow the [delegation rules](#delegation-rules).
+Read the [review protocol](#review-protocol) for reviewed tasks.
 
 ## 1. Agree on the run
 
@@ -24,12 +23,12 @@ Resolve only missing decisions:
 
 - Tasks, dependencies, and any shared files or mutable resources.
 - Implementor harness and model, including per-task overrides when requested.
-- Only for requested reviews: coverage and reviewer harness/model.
+- Only for requested reviews: coverage, reviewer harness/model, and review continuity.
 - Execution order and which independent tasks may overlap.
 - Step and batch boundaries, and any override to the default commit policy.
 - Existing tracking, outcome-log, and commit conventions.
 
-Use the harness reference's discovery and model-selection instructions only for implementors and explicitly requested reviewers.
+Use the selected runtime's discovery and the delegation rules' model-selection instructions only for implementors and explicitly requested reviewers.
 Retain selections and full-access authorization already provided.
 Keep successful discovery and preservation of normal configuration silent.
 Do not inspect, announce, or ask about memory settings unless the user requested that information or a change, or a specific launch failure requires it.
@@ -64,7 +63,7 @@ Place batch boundaries between complete steps so a required combined review and 
 ## 2. Select the review route
 
 Skip this section when reviews are OFF.
-For each reviewed task, check whether its implementor can invoke an installed, enabled `co-review` skill using the harness reference's discovery and invocation rules.
+For each reviewed task, check whether its implementor can invoke an installed, enabled `co-review` skill using the delegation rules' skill discovery and invocation rules.
 Check the actual child environment; a skill visible to the orchestrator alone is insufficient.
 Do not install, rebuild, or reconfigure skills to make this route available.
 
@@ -100,10 +99,10 @@ Do not add a heading, task table, introductory or closing narration, repeated mo
 
 Approve this run and per-step local commits?
 
-Replace field values with the actual run settings; show requested review coverage, reviewer settings, and route only in the Review field.
+Replace field values with the actual run settings; show requested review coverage, reviewer settings, review continuity, and route only in the Review field.
 Adapt the Commit field and question to an explicit commit-policy override.
 Keep complete task names, per-task overrides, grouped-step finalizers, and shared-resource constraints in the orchestration record; link that record from the relevant field when the settings cannot fit.
-Use the established tracking location or the harness's locally ignored run directory for that record.
+Use the established tracking location or the delegation rules' locally ignored run directory for that record.
 If higher-priority instructions require an approval-source explanation, append only one short sentence and include it in the same word limit.
 Reuse approval of this exact plan rather than asking again.
 
@@ -112,11 +111,11 @@ Reuse approval of this exact plan rather than asking again.
 Maintain a compact record per task:
 
 - Task scope, dependencies, owning step, file/resource ownership, and selected settings.
-- Implementor session ID and, when applicable, reviewer session ID.
+- Implementor session identifier and, when applicable, every reviewer session identifier.
 - Review route, round, finding ledger or delegated review report, and response paths.
 - State: `waiting`, `implementing`, `reviewing`, `fixing`, `finalizing`, `done`, `blocked`, or `failed`.
 
-Before a launch, capture the harness reference's ownership baseline.
+Before a launch, capture the delegation rules' ownership baseline.
 For tasks launched together, use the same initial batch boundary and record each task's ownership.
 Give each task and role separate run files.
 
@@ -135,8 +134,8 @@ For concurrent work, include this brief instruction:
 Keep shared tracking writes and Git index operations serialized too.
 The implementor must wait for its commit turn even if its normal task instructions suggest committing immediately.
 
-Launch ready tasks through the parent's managed asynchronous facility.
-Once all currently ready launches are dispatched, remain idle until at least one active managed process exits or the user supplies new input.
+Launch ready tasks through the selected runtime's managed asynchronous facility.
+Once all currently ready launches are dispatched, remain idle until at least one active child run finishes or the user supplies new input.
 Wait for any active handle, not for the entire batch or just the first process launched.
 If the facility only supports bounded per-handle waits, cycle blocking waits across the active handles using lifecycle status alone.
 A timeout or still-running status means re-enter the wait; it does not justify another progress message or inspection.
@@ -159,8 +158,8 @@ Apply this section only to explicitly requested reviews.
 
 ### Preferred route: implementor-managed co-review
 
-Resume the original implementor with the harness's explicit skill invocation.
-Pass the selected reviewer harness/model/effort/speed, task scope, and the approved execution constraints.
+Continue the original implementor session with the delegation rules' explicit skill invocation.
+Pass the selected reviewer harness/model/effort/speed, review continuity, task scope, and the approved execution constraints.
 Carry forward the run's full host authorization and any concurrency or commit restrictions.
 These are supplied user decisions, so the child must not ask the user to choose them again.
 
@@ -183,7 +182,7 @@ After the reviewer exits:
 1. Send its findings and evidence to the same implementor session.
    Ask for a response to every finding, accepted fixes, evidence for rebuttals, and a list of changes.
 2. Update the ledger from the implementor's response.
-3. Resume the same reviewer with that response and the ledger.
+3. Send that response and the ledger to the reviewer according to the selected review continuity.
    Require review of the affected final state and an explicit disposition for each item.
 4. Relay contested or new items back to the implementor and continue.
 
@@ -228,7 +227,7 @@ Let already-active independent sessions settle, record all results, and present 
 Resume the same affected session after the answer.
 Do not start dependent work or call the task complete while blocked.
 
-On process failure, preserve work and session IDs, materialize the bounded diagnostic using the harness reference, and stop new launches.
+On process failure, preserve work and session IDs, materialize the bounded diagnostic through the selected runtime, and stop new launches.
 Do not skip the failed task, silently change models, or take over its implementation or review.
 When a supplied full-access launch was accidentally restricted, correct the launch to the already-authorized settings and resume; no new permission question is needed.
 An actual host-policy rejection, missing credential, or unavailable service remains a real blocker.

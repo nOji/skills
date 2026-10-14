@@ -1,7 +1,9 @@
 # Repository instructions
 
 The canonical skill definitions live in `src/skill-definitions/`.
-The canonical shared harness reference lives in `src/harness-cli.md`.
+The canonical child-runtime gate lives in `src/child-runtime.md`.
+The canonical runtime-independent delegation rules live in `src/delegation.md`.
+The canonical harness CLI reference lives in `src/harness-cli.md` and ships beside each generated `SKILL.md` rather than inside it.
 The canonical shared review protocol lives in `src/review-protocol.md`.
 The canonical parent-agent guides live in `src/codex.md`, `src/claude.md`, and `src/cursor.md`.
 The `skills/` directory is AI-generated, committed distribution output.

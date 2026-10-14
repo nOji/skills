@@ -9,22 +9,20 @@ You own delivery of the complete feature and all logic and data that support it.
 The child owns UI presentation and visual design within the user's requirements.
 Delegate only that UI work, after preparing its prerequisites yourself.
 
-Read the [harness reference](#harness-cli-reference) before running a child.
-Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md`, Claude Code reads `claude.md`, and Cursor reads `cursor.md`.
-For another parent, use its native managed asynchronous process facility.
+Before running a child, choose its runtime in the [child runtime](#child-runtime) section and follow the [delegation rules](#delegation-rules).
 
 ## 1. Select the UI worker
 
-Use the harness reference to discover available CLIs and models.
+Use the selected runtime to discover available harnesses and models.
 Reuse the user's supplied harness, model, and execution settings.
 If the harness or model is missing, ask the user to choose the missing value rather than selecting a default.
-Resolve remaining execution choices through the harness reference and retain the selected settings across rounds.
+Resolve remaining execution choices through the selected runtime and retain the selected settings across rounds.
 If this skill was delegated, return missing user decisions to the coordinating parent.
 You may prepare the feature while awaiting a selection, but do not launch an unselected UI worker.
 
 ## 2. Prepare the complete functional foundation
 
-Capture the harness reference's initial ownership baseline before implementation.
+Capture the delegation rules' initial ownership baseline before implementation.
 Implement the required backend and frontend logic yourself, including data structures, API integration, transformations, feature state, validation, permissions, and action handlers as applicable.
 Expose ready-to-use values and callbacks at the UI boundary, with clear types or contracts.
 Prepare the loading, empty, error, success, and disabled conditions that the requested feature needs.
@@ -46,7 +44,7 @@ Finish all parent-owned prerequisites for the requested scope, then send one con
 Do not launch a separate UI session for each placeholder or file.
 Capture a handoff baseline so your implementation can be distinguished from the child's changes.
 
-Use the harness reference's minimal-prompt and worktree instructions.
+Use the delegation rules' minimal-prompt and worktree instructions.
 Include only the execution context and UI contract the child needs:
 
 - The feature's user-facing purpose and observable behavior that must work.
@@ -66,8 +64,8 @@ Express the boundary as an actionable instruction, for example:
 
 Follow this instruction with the actual integration-point list and contracts; do not send a generic brief without the task-specific details.
 Allow edits to necessary presentation assets or styles in the handoff scope, while explicitly protecting logic even in shared component files.
-Launch one UI implementor through the harness reference's managed process facility and retain its session ID.
-Wait for it to exit before inspecting its work or editing the handed-off regions.
+Launch one UI implementor through the selected runtime and retain its session identifier.
+Wait for its run to finish before inspecting its work or editing the handed-off regions.
 
 ## 4. Review functionality and supply missing prerequisites
 
@@ -88,7 +86,7 @@ Preserve unrelated changes throughout.
 Batch functional findings and any newly prepared prerequisites into one follow-up to the same UI session with the same selected settings.
 Describe the affected integration points, expected behavior, and concrete evidence rather than prescribing a visual redesign.
 Repeat until the complete feature works, required UI states are covered, and no handoff placeholders or missing prerequisites remain.
-On launch or resume failure, follow the harness reference's recovery rules; preserve completed work and the session rather than silently switching models or taking over the UI design.
+On launch or continuation failure, follow the delegation rules' failure and recovery rules; preserve completed work and the session rather than silently switching models or taking over the UI design.
 
 ## 5. Deliver the complete feature
 

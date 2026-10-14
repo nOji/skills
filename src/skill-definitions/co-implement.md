@@ -8,13 +8,11 @@ description: Delegate one implementation to Codex, Claude Code, or Cursor Agent,
 You supervise and review; the child agent implements.
 Follow the **supervisor sign-off** mode in the [review protocol](#review-protocol).
 
-Read the [harness reference](#harness-cli-reference) before running a child.
-Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md`, Claude Code reads `claude.md`, and Cursor reads `cursor.md`.
-For another parent, use its native managed asynchronous process facility.
+Before running a child, choose its runtime in the [child runtime](#child-runtime) section and follow the [delegation rules](#delegation-rules).
 
 ## 1. Configure the delegate
 
-Before studying implementation files, use the harness reference to discover available CLIs and models.
+Before studying implementation files, use the selected runtime to discover available harnesses and models.
 Ask only for choices the user has not already supplied.
 The preferred recommendation is Codex GPT-5.6 Luna, `xhigh`, fast; use the equivalent through Cursor if Codex is unavailable.
 Recommend it only when the current catalog supports that combination.
@@ -28,17 +26,17 @@ Pass the user's request through without narrowing it or replacing it with your o
 Point to task documents the user named.
 You may navigate plan documents just far enough to identify the next requested step, but do not study the implementation before delegation.
 
-Follow the harness reference's minimal-prompt rule.
+Follow the delegation rules' minimal-prompt rule.
 Add only task-specific information the delegate lacks and the changed-file or incomplete-work reporting needed to supervise this task.
 Do not add reminders about automatically loaded instructions, context files, or routine commit-message conventions.
 
 Capture the initial ownership baseline under the locally ignored `.agent-runs/` directory.
-Launch one implementor using the harness reference's managed process and full-access command.
+Launch one implementor through the selected runtime with the authorized full-access settings.
 
 ## 3. Wait, then review
 
 Announce the harness, model, and task briefly.
-Wait on the managed handle until it exits.
+Wait on the runtime's handle until the run finishes.
 Do not inspect source changes or start reviewing while the implementor is active.
 
 After exit, read the final response and inspect every task-owned change against the initial baseline and previous round boundary.
@@ -52,11 +50,11 @@ Record any fixes you made so the implementor does not unknowingly undo them.
 ## 4. Iterate and sign off
 
 Use the review protocol's ownership and staging rules before the next round.
-Resume the exact saved session with a new pair of round files and the same launch settings.
+Continue the exact recorded implementor session with new round files and the same launch settings.
 Review each round's new changes and any affected earlier conclusions.
 Continue until no blocking issue remains.
 
-If a launch or resume fails, follow the harness reference's recovery rules.
+If a launch or continuation fails, follow the delegation rules' failure and recovery rules.
 Do not silently change models, switch harnesses, or take over the implementation.
 
 Report the implementor, what changed, your own verification, any remaining limitation, and the final response path.

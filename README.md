@@ -71,9 +71,9 @@ The Vercel installer supports many agents, but these particular workflows have a
 
 - Use macOS, Linux, or WSL with Git, a POSIX-compatible shell, `jq`, and standard Unix utilities available.
 - Use Node.js 22.20 or newer with npm to run the current `skills@latest` CLI.
-- Install and authenticate at least one supported child harness: Codex, Claude Code, or Cursor Agent.
+- Install and authenticate at least one supported child harness: Codex, Claude Code, or Cursor Agent, unless the host exposes `orchestrator_capabilities` tools for launching children.
 - The child harness may use the same product as the supervising agent.
-- Use current child-harness CLI releases that accept the model-listing, permission, and resume options verified by the shared harness reference.
+- Use current child-harness CLI releases that accept the model-listing, permission, and resume options verified by the shared `harness-cli.md` reference.
 - Allow the supervising agent to manage long-running child processes asynchronously and, when the parent is Codex, request its documented host-shell approval.
 
 The skills perform live availability and model checks before delegating.
@@ -88,8 +88,10 @@ src/
   codex.md                       # Guidance only for a Codex parent agent
   claude.md                      # Guidance only for a Claude Code parent agent
   cursor.md                      # Guidance only for a Cursor parent agent
-  harness-cli.md
-  review-protocol.md             # Shared review dialogue and completion rules
+  child-runtime.md               # Chooses orchestrator tools or harness CLIs
+  delegation.md                  # Runtime-independent delegation and ownership rules
+  harness-cli.md                 # Child CLI commands, shipped beside each SKILL.md
+  review-protocol.md             # Shared review dialogue, continuity, and completion rules
   explicit-only.openai.yaml
   skill-definitions/
     co-implement.md
@@ -100,44 +102,53 @@ src/
 skills/                              # Generated and committed
   co-implement/
     SKILL.md                         # Definition plus embedded shared modules
+    harness-cli.md
     codex.md
     claude.md
     cursor.md
     agents/openai.yaml
   co-review/
     SKILL.md                         # Definition plus embedded shared modules
+    harness-cli.md
     codex.md
     claude.md
     cursor.md
     agents/openai.yaml
   delegate-ui/
-    SKILL.md                         # Definition plus embedded harness
+    SKILL.md                         # Definition plus embedded runtime and delegation rules
+    harness-cli.md
     codex.md
     claude.md
     cursor.md
     agents/openai.yaml
   orchestrate/
     SKILL.md                         # Definition plus embedded shared modules
+    harness-cli.md
     codex.md
     claude.md
     cursor.md
     agents/openai.yaml
 ```
 
-`src/harness-cli.md` is the single source of truth for shared command forms.
-`src/review-protocol.md` is the single source of truth for review evidence, dialogue, ownership, and completion.
-The three parent-agent guides contain only behavior that changes because Codex, Claude Code, or Cursor loaded the skill; commands for invoking those products as child harnesses remain in `src/harness-cli.md`.
+`src/child-runtime.md` decides how children run.
+When the loading agent can call an `orchestrator_capabilities` tool, it discovers, launches, continues, and cancels children through that tool family and ignores `harness-cli.md` and the parent guides.
+Otherwise it reads the adjacent `harness-cli.md` and its matching parent guide.
+`src/delegation.md` is the single source of truth for runtime-independent selection, access, prompt, ownership, session, and failure rules.
+`src/harness-cli.md` is the single source of truth for child CLI command forms.
+`src/review-protocol.md` is the single source of truth for review evidence, dialogue, continuity, ownership, and completion.
+Before the first reviewer round, reviewer-using workflows ask whether the reviewer should continue one session across rounds or start fresh each round, and both runtimes support either choice.
+The three parent-agent guides contain only CLI-runtime behavior that changes because Codex, Claude Code, or Cursor loaded the skill; commands for invoking those products as child harnesses remain in `src/harness-cli.md`.
 Before a release, an AI agent inventories every canonical skill definition, then compares Git history and uncommitted changes to determine which outputs are missing or stale.
-When regeneration is needed, it combines each canonical definition with its required harness and review modules inside the generated `SKILL.md` and copies all three parent-agent guides beside it.
-Each generated entrypoint directs Codex, Claude Code, or Cursor to read exactly the one parent guide that matches itself.
+When regeneration is needed, it combines each canonical definition with its required runtime, delegation, and review modules inside the generated `SKILL.md`, and copies `harness-cli.md` and all three parent-agent guides beside it.
+In the CLI runtime, each generated entrypoint directs Codex, Claude Code, or Cursor to read `harness-cli.md` and exactly the one parent guide that matches itself.
 There is intentionally no committed build script or injection marker, so formatting may vary between release-preparation runs while the complete source meaning must remain intact.
 Every definition under `src/skill-definitions/` is publishable, and its canonical name determines its generated directory and public entrypoint.
 The source inventory determines the complete public skill set, so new definitions are included without updating a fixed release allowlist.
-Shared modules are included according to each definition's workflow; delegate-ui embeds the harness and retains its own functional review rules.
+Shared modules are included according to each definition's workflow; delegate-ui embeds the runtime and delegation rules and retains its own functional review rules.
 
 ## Maintainer workflow
 
-1. Edit `src/harness-cli.md`, `src/review-protocol.md`, one of the three parent-agent guides, `src/explicit-only.openai.yaml`, or a file under `src/skill-definitions/`.
+1. Edit `src/child-runtime.md`, `src/delegation.md`, `src/harness-cli.md`, `src/review-protocol.md`, one of the three parent-agent guides, `src/explicit-only.openai.yaml`, or a file under `src/skill-definitions/`.
 2. Invoke the repository owner's project-local `prepare-skill-release` skill.
 3. Let that agent inventory every source definition, inspect both Git history and uncommitted changes, and skip regeneration for outputs that are already semantically aligned.
 4. When generation is needed, let the agent combine the canonical inputs semantically, copy the parent-agent guides, and create missing or refresh stale generated skill directories.

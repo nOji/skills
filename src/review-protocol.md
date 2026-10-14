@@ -14,6 +14,20 @@ The author owns fixes.
 The reviewer independently assesses the work.
 A coordinator that is neither author nor reviewer routes their reports and tracks resolution without deciding technical findings itself.
 
+## Review continuity
+
+When a child reviewer takes part, settle how its sessions carry across rounds before the first reviewer launch.
+Reuse a choice the user or an approved orchestration plan already supplied; otherwise ask in plain text together with the other missing reviewer choices, for example:
+
+> How should the reviewer handle follow-up rounds?
+> - **Continuous:** one reviewer session handles every round and builds on its earlier reasoning.
+> - **Fresh each round:** each round starts a new reviewer session that reassesses the current work from the brief, ledger, and latest responses, without earlier context.
+
+Continuous rounds are cheaper and keep the reviewer's context; fresh rounds reduce anchoring on earlier conclusions.
+Apply the choice to every reviewer round of the exchange and forward it as a supplied decision to any nested review.
+It governs only child reviewer sessions; the author always continues its own session.
+A workflow whose reviewer is the parent itself does not ask.
+
 ## Review brief
 
 Give the reviewer the task, its constraints, the task-owned changed-file list, and the author's completion report when available.
@@ -66,12 +80,12 @@ Keep stable finding IDs and a compact ledger with these states:
 
 1. The reviewer returns its findings.
 2. The author verifies each finding, makes the fixes it accepts, and answers every item.
-3. Send the updated ledger and the author's response to the same reviewer session.
+3. Send the updated ledger and the author's response to the reviewer according to the selected continuity: continue the same reviewer session, or start a fresh reviewer session with the fresh-round brief from the delegation rules.
    Include all edits since its last review, including changes it did not request.
 4. The reviewer inspects the current work, checks the fixes for regressions, and explicitly closes or contests each item by ID.
 5. Return any contested or new findings to the same author session and repeat.
 
-Preserve both session IDs throughout the exchange.
+Preserve the author's session identifier and every reviewer session identifier throughout the exchange.
 When a coordinator relays messages, pass the participants' final reports and evidence faithfully; do not substitute the coordinator's technical verdict.
 Compact repeated history into the ledger, but retain unresolved arguments and evidence.
 
@@ -97,7 +111,7 @@ This exception does not apply to the mutual-agreement loop.
 
 ## Protect ownership during review
 
-Use the content baselines and ownership rules in the harness reference.
+Use the content baselines and ownership rules in the delegation rules.
 The author pauses edits to the reviewed task while its reviewer runs.
 Independent tasks may continue only where their files and mutable resources do not conflict with that review.
 

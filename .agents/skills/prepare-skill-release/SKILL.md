@@ -35,24 +35,35 @@ A newly added source must be included even when no generated directory or skill-
 | Input | Purpose |
 | --- | --- |
 | Every definition under `src/skill-definitions/` | Skill-specific roles, choices, workflow, and completion rules |
-| `src/harness-cli.md` | Child CLI commands, capabilities, invocation, records, and recovery |
-| `src/review-protocol.md` | Shared evidence, dialogue, ownership, and review completion |
-| `src/codex.md`, `src/claude.md`, `src/cursor.md` | Instructions for the agent loading the skill |
+| `src/child-runtime.md` | Choice between orchestrator tools and harness CLIs, and the orchestrator-tool operations |
+| `src/delegation.md` | Runtime-independent selection, access, prompt, ownership, session, and failure rules |
+| `src/harness-cli.md` | Child CLI discovery, flags, launch, continuation, output extraction, and CLI diagnostics |
+| `src/review-protocol.md` | Shared evidence, dialogue, review continuity, ownership, and review completion |
+| `src/codex.md`, `src/claude.md`, `src/cursor.md` | CLI-runtime instructions for the agent loading the skill |
 | `src/explicit-only.openai.yaml` | Public Codex invocation policy |
 
 Each public `SKILL.md` embeds its complete definition and each required shared module exactly once.
 Determine module composition from that definition's references, roles, and completion rules:
 
-- Include the harness reference when the skill launches or resumes child agents or refers to that reference.
+- Embed the child runtime and delegation rules when the skill launches or continues child agents or refers to either module.
+- Copy `src/harness-cli.md` unchanged beside every entrypoint that embeds the child runtime; never embed it in `SKILL.md`.
 - Include the review protocol when the definition invokes the shared protocol or its supervisor-sign-off or mutual-agreement modes.
 - Preserve a definition's self-contained review workflow when it uses its own roles and completion rules; reviewing work alone does not require the shared protocol.
 
 For the current workflows, co-implement uses the shared supervisor-sign-off mode; co-review and orchestration reviews use shared mutual agreement.
-Delegate-ui uses its own parent-led functional review and requires the harness reference without the shared review protocol.
+Delegate-ui uses its own parent-led functional review and requires the child runtime and delegation rules without the shared review protocol.
 These are composition examples, not an allowlist; derive any additional skill's requirements from its source.
 
 The distribution must work without access to `src/` or another installed public skill.
 Orchestrate's optional use of an installed co-review is an optimization; its embedded review route remains complete.
+
+### Runtime gate
+
+The embedded child runtime is the gate between the two runtimes.
+Place it before any workflow step that discovers, launches, or continues a child, so the loading agent settles its runtime first.
+With orchestrator tools available, the agent must be able to complete the skill without reading `harness-cli.md` or a parent guide.
+Without them, it must read the adjacent `harness-cli.md` completely and exactly one matching parent guide.
+Do not move CLI commands into `SKILL.md`, and do not move runtime-independent delegation or ownership rules into `harness-cli.md`.
 
 ## Decide whether regeneration is needed
 
@@ -81,21 +92,23 @@ Do not rewrite solely for formatting, unrelated documentation changes, or becaus
    Do not turn the orchestrator into an implementor or technical reviewer.
    For delegate-ui, preserve the parent's ownership of feature logic and functional review and the child's ownership of presentation and visual design.
    Preserve additional skills' roles as defined by their canonical sources.
-4. Ensure the entrypoint directs the loading agent to exactly its matching adjacent parent guide.
-   Copy the three parent guides beside every entrypoint without merging their tool instructions into the child harness module.
+4. Ensure the embedded child runtime directs a harness-CLI run to the adjacent `harness-cli.md` and exactly its matching adjacent parent guide, and an orchestrator-tool run away from both.
+   Copy `src/harness-cli.md` and the three parent guides beside every such entrypoint without merging their instructions into `SKILL.md`.
 5. Preserve valid YAML frontmatter with a name matching the source inventory and output directory.
    Copy `src/explicit-only.openai.yaml` to each `agents/openai.yaml`.
-6. Remove stale generated files and directories, standalone module copies, source-only commentary, temporary files, and symlinks.
+6. Remove stale generated files and directories, standalone copies of embedded modules, source-only commentary, temporary files, and symlinks.
    Confirm stale output ownership from Git status and history, preserving unrelated work.
    Do not leave links back to canonical source paths.
 
-Each public directory must contain only `SKILL.md`, `codex.md`, `claude.md`, `cursor.md`, and `agents/openai.yaml`.
+Each public directory must contain only `SKILL.md`, `harness-cli.md`, `codex.md`, `claude.md`, `cursor.md`, and `agents/openai.yaml`.
 Normal discovery must expose exactly the canonical names from the complete source inventory; this internal preparation skill stays outside that public surface.
 
 ## Review the result
 
 Compare source and generated name sets and report any missing or extra skills; equal counts alone do not establish coverage.
 Check every generated skill against all its required inputs for semantic completeness, module duplication, local links and anchors, YAML identity, and parent-versus-child instruction placement.
+Check that each adjacent `harness-cli.md` matches its source, that `SKILL.md` embeds no harness CLI reference, and that the runtime gate precedes child discovery and reaches each runtime's complete instructions.
+Check that reviewer-using workflows settle review continuity before the first reviewer launch, forward it to nested reviews, and map both continuity choices onto each runtime.
 Check that orchestration retains per-task reviewer choices, approved parallel scheduling, both review routes, agreement before dependent work, and serialized shared writes.
 Check that delegate-ui retains parent-owned prerequisites, one batched UI handoff, functional review, design autonomy, and completion of the integrated feature.
 Apply each additional definition's own completion requirements to its generated result.

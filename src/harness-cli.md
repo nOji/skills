@@ -1,6 +1,8 @@
 # Harness CLI reference
 
-Shared launch, invocation, ownership, and recovery instructions for Codex, Claude Code, Cursor Agent, and Muse Code (`muse`).
+Launch, continuation, output-extraction, and CLI-failure commands for Codex, Claude Code, Cursor Agent, and Muse Code (`muse`) child processes.
+Use this file only when the skill selected harness CLIs as its child runtime.
+The skill's embedded delegation rules still govern selection, access, prompts, ownership, sessions, and recovery; this file adds the CLI mechanics.
 Parent-specific process tools belong in the adjacent parent guides.
 
 Checked against official documentation and local CLI help on 2026-09-06: Codex 0.153.4, Claude Code 2.1.246, and Cursor Agent 2026.08.25-3e8eec8.
@@ -74,17 +76,6 @@ If setup is required, `muse login` starts browser authentication and `muse auth 
 Do not read credential files or replace an existing login merely to discover models.
 See [Muse authentication](https://dev.meta.ai/docs/muse-code/auth).
 
-Retain actual discovery errors and mark unavailable harnesses with a short reason.
-Authentication and catalogs do not guarantee quota or model access; handle execution failures when they occur.
-
-Present a compact menu only for choices still missing.
-Show display names, one line per harness, and ask for the model, supported effort, and available speed choice.
-Shortlist Cursor's model families rather than printing every variant.
-Use the calling skill's recommendation only when available.
-Treat selections supplied through an approved orchestration prompt as already answered.
-Do not switch harness, model, effort, or requested speed on your own.
-If runtime metadata reports a substituted model, surface it rather than attributing the work to the requested model.
-
 | Harness | Model and effort | Speed |
 | --- | --- | --- |
 | Codex | `-m <id>`, `-c 'model_reasoning_effort="<effort>"'` | Fast uses `-c 'service_tier="priority"'` when the catalog supports it; normal uses the configured standard setting |
@@ -113,11 +104,7 @@ A local probe with `--model muse-spark-1.3 --reasoning-effort high --contributor
 Its runtime model metadata retained `muse-spark-1.3`; do not require a `-contributor` suffix in that field as proof that the per-run flag was accepted.
 See [Muse model variants](https://dev.meta.ai/docs/models).
 
-## 2. Preserve normal capabilities
-
-Use full host access for the authorized task, including local services, Docker, networking, resumes, and nested reviews.
-Carry existing authorization forward; do not insert another approval question at every launch or review round.
-Honor a user-requested restriction and any enforced host or organization policy.
+## 2. Full-access CLI settings
 
 There are two boundaries: where the parent starts the CLI, and where the child executes its tools.
 The parent must use its approved host execution facility.
@@ -143,18 +130,10 @@ See [Muse permissions](https://dev.meta.ai/docs/muse-code/permissions).
 These options do not override explicit administrative restrictions or create missing credentials.
 See [Claude permissions](https://code.claude.com/docs/en/permissions), [Claude sandboxing](https://code.claude.com/docs/en/sandboxing), and [Cursor CLI parameters](https://cursor.com/docs/cli/reference/parameters).
 
-Start in the task's actual working directory with the normal user identity, environment, login, settings, skills, plugins, and configured integrations.
-When the parent is instructed to work in a Git worktree, whether selecting an existing one or creating one, resolve that worktree's absolute path before delegating and use it as `agent_workspace` for every child launch and resume.
-Explicitly tell each child, including implementors and reviewers, to work in that worktree and pass its absolute path in the task prompt.
-Require children to carry the same worktree path and instruction forward to any agents they summon, including nested reviews, unless the user explicitly assigns a different worktree to that task.
-Keep the harness's default system prompt, memory, context, and compaction behavior unless the user chose an override.
+Start the CLI in the task's working directory; when the delegation rules assign a worktree, use its absolute path as `agent_workspace` for every launch and continuation.
 Do not use `env -i`, an artificial home/config directory, `--ignore-user-config`, `--ignore-rules`, `--bare`, `--safe-mode`, `--strict-mcp-config`, or tool allowlists to simplify delegation.
 Do not pass flags that disable skills, session persistence, or otherwise remove normal capabilities.
 Merge necessary per-run settings without discarding unrelated settings.
-
-Normal configuration is each child's own configuration; a CLI does not automatically inherit another product's settings or the parent chat's desktop-only tools.
-Preserve ordinary automatic instruction discovery instead of copying those instructions into the task prompt.
-Do not claim unavailable integrations are present.
 See [Claude headless context loading](https://code.claude.com/docs/en/headless) and [Codex instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
 
 Muse normally loads user settings from `~/.config/muse/settings.json` (respecting its configured XDG location), and discovers project instructions inside the Git boundary.
@@ -164,49 +143,10 @@ Retain its normal personal context, plugins, MCP configuration, observers, and s
 Use repeatable `-c KEY=VALUE` for necessary per-run overrides, with JSON values; unknown or conflicting keys refuse startup.
 See [Muse configuration and context](https://dev.meta.ai/docs/muse-code/configuration).
 
-Run implementors and reviewers in normal agent mode.
-A reviewer receives a no-repair role instruction, with normal tools available for verification.
-Plan mode changes the deliverable and is not a substitute for review.
+## 3. Skill invocation in CLI prompts
 
-## 3. Minimal prompts and explicit skills
-
-Pass the user's task and only missing execution-specific context: task scope, selected reviewer, approved access, ownership, concurrency, and coordination boundaries.
-Include a task document when the user named it.
-Treat applicable base prompts and global/project instruction files as available through each child's normal loading mechanisms.
-Do not copy, summarize, repeat, or add reminders to read these instructions unless the user explicitly asks.
-Apply this rule to launches, resumes, and nested delegation, while preserving each harness's own normal configuration.
-Pass runtime decisions the child does not already have; do not restate inherited conventions.
-Ask for an extra report field only when the workflow needs it and it is otherwise missing.
-
-When delegating a skill, put the explicit invocation at the beginning of the child's user prompt:
-
-| Child | Prompt form |
-| --- | --- |
-| Codex | `$co-review`, or the path-qualified mention `[$co-review](/absolute/skills/co-review/SKILL.md)` |
-| Claude Code | `/co-review <task and supplied choices>` |
-| Cursor Agent | `/co-review <task and supplied choices>` |
-| Muse Code | Interactive `/<skill-name>` is documented; headless expansion is not verified, so use the calling workflow's embedded route unless native loading has been established |
-
-Use the actual registered command for a namespaced plugin skill.
-The skill name is prompt content, not a shell command or a model flag.
 Use a quoted heredoc or correctly quoted argument so the shell does not expand `$co-review` or interpret Markdown.
-Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in `-p` prompts; Cursor documents explicit slash-skill invocation.
-See [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Claude headless skills](https://code.claude.com/docs/en/headless), and [Cursor skills](https://cursor.com/docs/skills).
-
-Before offering an installed skill route, resolve its real entrypoint and confirm it is enabled and usable by the selected child in this working directory.
-Use an existing skill listing when available, then check the relevant normal discovery locations:
-
-| Child | Normal locations to check |
-| --- | --- |
-| Codex | Applicable ancestor `.agents/skills/` directories and `~/.agents/skills/`, plus configured plugin skills |
-| Claude Code | Applicable `.claude/skills/`, `~/.claude/skills/`, and installed plugin skills |
-| Cursor Agent | Applicable `.agents/skills/`, `.cursor/skills/`, their user-level equivalents, and supported compatibility/plugin locations |
-| Muse Code | `muse skills list --enabled-only --workspace "$agent_workspace" --json`; inspect the chosen ID with `muse skills inspect` |
-
-Follow symlinks and actual configuration; do not assume a directory exists or a parent-visible skill is registered in every child.
-File existence alone does not prove that a particular CLI version will expand its command.
-If native loading fails, report the failure and use the workflow's embedded alternative.
-Do not install a missing skill, enable a disabled one, or disguise its contents as a workaround.
+Claude documents slash-skill expansion in `-p` prompts.
 
 Muse discovers user skills in its config directory and `~/.agents/skills`, project skills in `.agents/skills`, and enabled plugin/built-in skills.
 Compatibility discovery can also include personal and project Claude/Codex skill directories; inspect the actual catalog and its diagnostics.
@@ -215,52 +155,18 @@ An offline 1.4.7 echo probe returned `/co-review …` literally and emitted no s
 See [Muse skill discovery and activation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/skills/).
 This reference adds Muse as a child harness; the existing parent guides do not establish a Muse-native coordinator or native nested-skill route.
 
-Forward already approved reviewer settings and access as user decisions.
-Explicit invocation does not itself override permissions; the launch settings establish the authorized access.
-An unattended child returns any genuinely missing decision to its coordinator instead of waiting on an interactive question.
+## 4. Run files
 
-## 4. Run records and ownership
+Within the task and role stem from the delegation rules, use `.agent-runs/<task>-<role>-r1.log` and `...-r1.response.md`, with new log and response files for every round.
+Store each session's exact ID in its own one-line session file.
+A continued session keeps one stable `.agent-runs/<task>-<role>.session` file.
+A fresh session for a later round writes a new round-specific file, such as `.agent-runs/<task>-<role>-r2.session`, and never overwrites an earlier session file.
 
-Before creating run artifacts in a Git working tree, establish a local ignore rule:
-
-```bash
-agent_exclude_path="$(git rev-parse --git-path info/exclude)" || exit 1
-mkdir -p "$(dirname "$agent_exclude_path")"
-touch "$agent_exclude_path"
-grep -qxF '/.agent-runs/' "$agent_exclude_path" ||
-  printf '\n/.agent-runs/\n' >> "$agent_exclude_path"
-git check-ignore -q --no-index .agent-runs/.ignore-check || exit 1
-test -z "$(git ls-files -- .agent-runs)" || {
-  echo "Run artifacts are already tracked; resolve that before delegation." >&2
-  exit 1
-}
-mkdir -p .agent-runs
-```
-
-This changes local Git metadata, not tracked `.gitignore`.
-If the directory is not a Git working tree or run artifacts cannot be kept untracked, stop before launching.
-
-Capture ownership without dumping source into the parent context:
-save `git diff --cached --binary HEAD` and `git diff --binary` as separate files, plus a NUL-safe untracked-file manifest with path, type, and SHA-256 content hash.
-For an unborn repository, use the index-versus-empty-tree baseline instead of `HEAD`.
-Retain content needed for any safe restoration; hashes alone cannot restore a modified untracked file.
-
-Capture the initial baseline before implementation and a review baseline before each reviewer round.
-Preserve pre-existing user work and other agents' changes.
-Only stage, revert, or commit deltas whose ownership is established.
-Never use broad staging such as `git add .` or `git add -A`.
-In concurrent work, keep ownership boundaries and serialize all shared-index changes.
-
-Each task and role gets a unique stem:
-`.agent-runs/<task>-<role>-r1.log`, `...-r1.response.md`, and one stable `.agent-runs/<task>-<role>.session`.
-Use new log/response files for every round and keep nested review artifacts distinct.
-Store artifacts here rather than in `/tmp`; pass prompts directly instead of creating prompt files.
-
-The parent reads only the final response after exit and the one-line session file when resuming.
+The parent reads only the final response after exit and the one-line session file when continuing.
 Never read or print the streamed log, including for progress or failure diagnosis.
 Only mechanical post-exit extraction of final output, session metadata, or bounded errors may consume it, with output redirected to files.
 
-## 5. Launch and resume
+## 5. Launch, continue, or start fresh
 
 Use the parent's managed asynchronous process facility and retain its handle.
 Keep the shell block attached to that facility; do not add `&`, `nohup`, or an unmanaged detached process.
@@ -271,7 +177,8 @@ In the examples, set `agent_model`, `agent_effort`, `agent_workspace`, `agent_lo
 Set the command tool's working directory to `agent_workspace`.
 The snippets use Bash-compatible shell syntax.
 Include the invocation, its post-exit extraction, and exit-status propagation in the same managed shell block.
-For every resume, require a nonempty saved session file and read its exact ID into `agent_session_id`.
+For every continuation, require a nonempty saved session file and read its exact ID into `agent_session_id`.
+For a fresh session, use the launch form with a new session file and a self-contained brief; never add a resume or session flag.
 For Claude and Cursor, define `agent_finish_json_round` from the finalizer section inside that shell block before the invocation.
 For Muse, define `agent_finish_muse_round` from its section before the invocation and set `agent_contributor_mode` to the approved `on` or `off` value.
 
@@ -300,7 +207,7 @@ Codex writes the final response through `-o`.
 The structured `thread.started.thread_id` identifies this exact child.
 See [Codex exec output](https://learn.chatgpt.com/docs/non-interactive-mode).
 
-For later rounds, read the saved ID and replace the invocation with:
+To continue the session, read the saved ID and replace the invocation with:
 
 ```bash
 agent_session_id="$(sed -n '1p' "$agent_session")"
@@ -510,10 +417,9 @@ Never replace a saved session ID with a different returned ID.
 Use that exact task-local ID for every continuation; never use `--last`, `--continue`, file modification order, or the parent's session ID.
 If no exact ID can be recovered from this task's own structured metadata, report that fact rather than guessing.
 
-## 6. Failure and recovery
+## 6. CLI failure diagnostics
 
 A non-zero exit, missing final response, materialized error, or missing required terminal result is a process failure.
-Keep failure reporting separate from a successful process that asks a task-level question.
 
 For Muse, the finalizer already extracts the root terminal reason, including failed or cancelled runs.
 Documented process statuses are `0` for a completed turn, `1` for failure/cancellation or a step limit, `2` for usage errors, and `130`/`143` for SIGINT/SIGTERM.
@@ -539,17 +445,5 @@ Keep an existing final report intact when it is useful; use a separate round-spe
 For a startup failure with no structured agent events, a bounded file-to-file extraction of the CLI's plain error is also acceptable.
 If no diagnostic is available, report the exit status and missing diagnostic.
 Do not inspect or tail the transcript.
-
-Correct an accidental launch restriction to the already-authorized full-access settings and resume the same task without asking for permission again.
 For a parent tool that prematurely ended the process, retry once through its proper managed asynchronous facility.
-A transient capacity failure permits one short delayed retry.
-Do not retry quota, authentication, policy, or repeated capacity failures in a loop.
-
-Report the actual blocker and current work.
-Offer another available harness before offering to take over yourself, and wait for authorization to change the selected harness or role.
-A new harness requires a fresh task brief; the previous harness's session ID is not portable.
-An enforced denial is not a reason to clear security settings or bypass a host control.
-
-In orchestration, stop new launches and settle already-active work before presenting blockers.
-Preserve completed implementation, review ledgers, and resumable sessions.
-Cancel through the managed handle or a verified task-specific process ID; do not use a broad name-based kill.
+Follow the delegation rules for the remaining recovery and reporting steps.
