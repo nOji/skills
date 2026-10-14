@@ -99,10 +99,11 @@ Follow the user's commit-message convention for the complete task change and com
 
 ## Harness CLI reference
 
-Shared launch, invocation, ownership, and recovery instructions for Codex, Claude Code, and Cursor Agent.
+Shared launch, invocation, ownership, and recovery instructions for Codex, Claude Code, Cursor Agent, and Muse Code (`muse`).
 Parent-specific process tools belong in the adjacent parent guides.
 
 Checked against official documentation and local CLI help on 2026-09-06: Codex 0.153.4, Claude Code 2.1.246, and Cursor Agent 2026.08.25-3e8eec8.
+Muse additions checked on 2026-10-14 against official documentation, local help, the live provider catalog, and Muse Code 1.4.7 (`1.4.7-R6101.1`) probes with `muse-spark-1.3`.
 This is not a claim that every model, account, integration, or command combination was exercised.
 Use the installed CLI's help and current catalog when a version differs; never invent flags or model IDs.
 
@@ -115,6 +116,7 @@ A parent may delegate to the same product.
 command -v codex
 command -v claude
 command -v cursor-agent || command -v agent
+command -v muse
 ```
 
 Treat each returned path independently; a missing executable does not invalidate the other candidates.
@@ -150,6 +152,27 @@ Use the installed CLI's supported aliases and the [model configuration reference
 Claude does not document a general `--list-models` equivalent.
 Do not present a model's prose response to `/model` as an authoritative account catalog.
 
+For Muse, inspect the installed command surfaces independently:
+
+```bash
+muse --version
+muse exec --help
+muse model-profile show muse-spark-1.3 --effort high
+```
+
+`model-profile show` explains local harness tuning; it is not an authenticated catalog or quota check.
+Version 1.4.7 has no `--list-models` or `auth status` command.
+Use interactive `/models`, or the read-only MSP `model/list` request through `muse serve` after its initialization handshake.
+The request accepts `{}` before creating a session; retain the catalog's `source`, `modelId`, `variants`, and `defaultReasoningEffort`, not raw configuration.
+See [Muse catalog discovery](https://meta-models.github.io/muse-code-sdk/next/cookbook/list-models-and-switch-mid-session/).
+The inspected `providerCatalog` row advertised `muse-spark-1.3` with `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`, and a default of `max`.
+Generic CLI help says the default is `high`; explicitly pass the selected effort rather than relying on either default.
+
+Use Muse's existing login; the documented credential order is `META_API_KEY`, stored API key, then browser login.
+If setup is required, `muse login` starts browser authentication and `muse auth set --api-key-stdin` stores a key without putting it in command arguments.
+Do not read credential files or replace an existing login merely to discover models.
+See [Muse authentication](https://dev.meta.ai/docs/muse-code/auth).
+
 Retain actual discovery errors and mark unavailable harnesses with a short reason.
 Authentication and catalogs do not guarantee quota or model access; handle execution failures when they occur.
 
@@ -166,12 +189,28 @@ If runtime metadata reports a substituted model, surface it rather than attribut
 | Codex | `-m <id>`, `-c 'model_reasoning_effort="<effort>"'` | Fast uses `-c 'service_tier="priority"'` when the catalog supports it; normal uses the configured standard setting |
 | Claude Code | `--model <alias-or-id>`, `--effort <supported-level>` | Supported Opus models can use `--settings '{"fastMode":true}'` |
 | Cursor Agent | `--model <catalog-entry>` | Use the catalog's exact effort/speed variant or documented parameterized model form |
+| Muse Code | `--model <id>`, `--reasoning-effort <catalog-level>` (alias `--effort`) | No independent fast/service-tier flag in 1.4.7; effort and contributor mode are separate choices |
 
 Omit effort flags for models that do not support them.
 Do not invent Cursor suffixes from a family name.
 If an explicit normal-speed choice conflicts with saved fast-mode settings, resolve that per-run setting before launch rather than silently retaining fast mode.
 Claude fast mode requires supported account access and may use separately billed usage credits; offer it only with that distinction clear.
 See [Claude fast mode](https://code.claude.com/docs/en/fast-mode).
+
+Muse Spark 1.3 probes succeeded at every catalog effort from `minimal` through `max` with `--contributor-mode off`.
+`none` is listed by generic help but rejected by the Meta provider with exit 2.
+`ultra` completed with an explicit stderr warning that its gate was closed and `xhigh` was used instead; do not offer it as a verified Spark 1.3 tier.
+Check catalog support and report runtime fallback warnings even when the process succeeds.
+These observations establish invocation support, not relative reasoning quality or latency.
+See [Meta reasoning levels](https://dev.meta.ai/docs/reasoning).
+
+Muse's `--contributor-mode on|off` overrides this run without saving a preference.
+Contributor mode changes data-use and billing terms; it is not a speed tier.
+For standard Spark 1.3, use `--model muse-spark-1.3 --contributor-mode off` to avoid inheriting a contributor preference.
+Enable contributor mode only when selected by the user, and recheck the resulting catalog and supported efforts; Meta excludes `max` from `muse-spark-1.3-contributor`.
+A local probe with `--model muse-spark-1.3 --reasoning-effort high --contributor-mode on` completed with exit 0 and the expected terminal response, without fallback warnings.
+Its runtime model metadata retained `muse-spark-1.3`; do not require a `-contributor` suffix in that field as proof that the per-run flag was accepted.
+See [Muse model variants](https://dev.meta.ai/docs/models).
 
 ### 2. Preserve normal capabilities
 
@@ -191,10 +230,15 @@ See [Codex non-interactive execution](https://learn.chatgpt.com/docs/non-interac
 | Codex | `--dangerously-bypass-approvals-and-sandbox`, on both launch and resume |
 | Claude Code | `--permission-mode bypassPermissions --settings '{"sandbox":{"enabled":false}}'` |
 | Cursor Agent | `--force --sandbox disabled --trust --approve-mcps` |
+| Muse Code | `--yolo` on both fresh `exec` and exact-session continuation |
 
 Claude's permission mode and Bash sandbox are separate controls.
 Cursor's force flag and sandbox setting are also separate.
 The Cursor MCP flag approves the configured servers for this run.
+Muse's `--yolo` disables child approvals and sandboxing and trusts the workspace for this run.
+`--disable-approval` alone retains its sandbox; `--disable-sandbox` alone retains approvals.
+Workspace trust loads project instructions, skills, and hooks; it is separate from permission to execute tools.
+See [Muse permissions](https://dev.meta.ai/docs/muse-code/permissions).
 These options do not override explicit administrative restrictions or create missing credentials.
 See [Claude permissions](https://code.claude.com/docs/en/permissions), [Claude sandboxing](https://code.claude.com/docs/en/sandboxing), and [Cursor CLI parameters](https://cursor.com/docs/cli/reference/parameters).
 
@@ -211,6 +255,13 @@ Normal configuration is each child's own configuration; a CLI does not automatic
 Preserve ordinary automatic instruction discovery instead of copying those instructions into the task prompt.
 Do not claim unavailable integrations are present.
 See [Claude headless context loading](https://code.claude.com/docs/en/headless) and [Codex instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+
+Muse normally loads user settings from `~/.config/muse/settings.json` (respecting its configured XDG location), and discovers project instructions inside the Git boundary.
+At each directory level its instruction precedence is `AGENTS.md`, `CLAUDE.md`, `.agents/AGENTS.md`, then `.claude/CLAUDE.md`; the first existing file wins at that level.
+Project instructions require workspace trust.
+Retain its normal personal context, plugins, MCP configuration, observers, and session logging; do not add `--no-foreign-personal-context`, `--disable-reminders`, or `--disable-web-tools` to simplify a launch.
+Use repeatable `-c KEY=VALUE` for necessary per-run overrides, with JSON values; unknown or conflicting keys refuse startup.
+See [Muse configuration and context](https://dev.meta.ai/docs/muse-code/configuration).
 
 Run implementors and reviewers in normal agent mode.
 A reviewer receives a no-repair role instruction, with normal tools available for verification.
@@ -233,6 +284,7 @@ When delegating a skill, put the explicit invocation at the beginning of the chi
 | Codex | `$co-review`, or the path-qualified mention `[$co-review](/absolute/skills/co-review/SKILL.md)` |
 | Claude Code | `/co-review <task and supplied choices>` |
 | Cursor Agent | `/co-review <task and supplied choices>` |
+| Muse Code | Interactive `/<skill-name>` is documented; headless expansion is not verified, so use the calling workflow's embedded route unless native loading has been established |
 
 Use the actual registered command for a namespaced plugin skill.
 The skill name is prompt content, not a shell command or a model flag.
@@ -248,11 +300,19 @@ Use an existing skill listing when available, then check the relevant normal dis
 | Codex | Applicable ancestor `.agents/skills/` directories and `~/.agents/skills/`, plus configured plugin skills |
 | Claude Code | Applicable `.claude/skills/`, `~/.claude/skills/`, and installed plugin skills |
 | Cursor Agent | Applicable `.agents/skills/`, `.cursor/skills/`, their user-level equivalents, and supported compatibility/plugin locations |
+| Muse Code | `muse skills list --enabled-only --workspace "$agent_workspace" --json`; inspect the chosen ID with `muse skills inspect` |
 
 Follow symlinks and actual configuration; do not assume a directory exists or a parent-visible skill is registered in every child.
 File existence alone does not prove that a particular CLI version will expand its command.
 If native loading fails, report the failure and use the workflow's embedded alternative.
 Do not install a missing skill, enable a disabled one, or disguise its contents as a workaround.
+
+Muse discovers user skills in its config directory and `~/.agents/skills`, project skills in `.agents/skills`, and enabled plugin/built-in skills.
+Compatibility discovery can also include personal and project Claude/Codex skill directories; inspect the actual catalog and its diagnostics.
+`--enabled-only` includes `user-invocable-only` skills, which the model cannot load with `read_skill`; listing them does not establish headless invocation support.
+An offline 1.4.7 echo probe returned `/co-review …` literally and emitted no skill activation record; do not assume Claude-style slash expansion in `muse exec`.
+See [Muse skill discovery and activation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/skills/).
+This reference adds Muse as a child harness; the existing parent guides do not establish a Muse-native coordinator or native nested-skill route.
 
 Forward already approved reviewer settings and access as user decisions.
 Explicit invocation does not itself override permissions; the launch settings establish the authorized access.
@@ -312,6 +372,7 @@ The snippets use Bash-compatible shell syntax.
 Include the invocation, its post-exit extraction, and exit-status propagation in the same managed shell block.
 For every resume, require a nonempty saved session file and read its exact ID into `agent_session_id`.
 For Claude and Cursor, define `agent_finish_json_round` from the finalizer section inside that shell block before the invocation.
+For Muse, define `agent_finish_muse_round` from its section before the invocation and set `agent_contributor_mode` to the approved `on` or `off` value.
 
 #### Codex
 
@@ -401,6 +462,115 @@ exit "$agent_exit"
 For resume, add `--resume "$agent_session_id"` after `-p`, retaining the exact model variant and all other settings.
 See [Cursor headless execution](https://cursor.com/docs/cli/headless) and [sandbox controls](https://cursor.com/docs/cli/overview).
 
+#### Muse Code
+
+Use `muse exec`, not interactive `muse resume`, for unattended work.
+Pass the prompt as a quoted argument or through `--prompt-file /dev/stdin` on macOS/Linux; plain stdin alone is not the documented prompt interface.
+The latter form was exercised with a quoted heredoc, preserving shell metacharacters without creating a prompt file.
+Do not combine this stdin use with `--api-key-stdin`.
+
+```bash
+agent_exit=0
+muse exec \
+  --model "$agent_model" --reasoning-effort "$agent_effort" \
+  --contributor-mode "$agent_contributor_mode" \
+  --yolo --workspace "$agent_workspace" \
+  --json --prompt-file /dev/stdin \
+  > "$agent_log" 2>&1 <<'AGENT_PROMPT' || agent_exit=$?
+<user task and supplied choices, using the embedded workflow when needed>
+AGENT_PROMPT
+agent_finish_muse_round
+exit "$agent_exit"
+```
+
+For continuation, require the existing nonempty session file, read its UUID, and add `--session-id "$agent_session_id"` to the same `exec` invocation with new round files.
+Repeat the model, effort, contributor mode, access, and workspace settings.
+A local continuation recovered a token supplied only in the previous turn, using the same session UUID and a different selected effort.
+Never substitute a run UUID, command ID, task ID, or display name for the saved session UUID.
+Muse refuses a workspace mismatch; do not add `--allow-workspace-switch` unless the user actually assigned a different workspace.
+Keep `--no-session-log` absent so continuation remains available.
+See [Muse headless execution and continuation](https://dev.meta.ai/docs/muse-code/extending#headless-and-ci).
+
+Additional controls from installed `exec --help`:
+
+| Option | Use and boundary |
+| --- | --- |
+| `--parallel-tool-calls` / `--no-parallel-tool-calls` | Per-run model tool-call preference, not approval or speed control; both were accepted in successful probes, without measuring actual tool concurrency |
+| `-c agents.execution_capacity=8` | Example of a JSON per-run setting; preserve normal defaults unless a concurrency choice requires an override |
+| `--max-model-steps <N>` | Explicit work cap; reaching it fails the run rather than completing the task |
+| `--output-schema <FILE>` | JSON schema for the final answer, Meta provider only; use only when the workflow requires structured output |
+| `--max-tool-output-bytes <N>` | Tool-output cap (`0` or at least `9`); avoid arbitrary truncation for ordinary delegation |
+| `--image <PATH>` | Repeatable local image attachment |
+| `--worktree off\|create\|existing` | Muse-managed workspace choice; when the parent already chose a worktree, use that absolute directory directly |
+| `--context-compaction-*` | Explicit compaction overrides; retain normal behavior unless requested |
+| `--user-input-auto-resolve` | Offers the question tool but auto-cancels prompts; it cannot supply missing user decisions |
+
+Do not copy interactive-only flags into `exec`; for example, root `--agents` is absent from the installed headless help.
+The effort alias, JSON config example, heredoc prompt, and schema-constrained final response were exercised together.
+Image attachment, worktree creation, compaction overrides, and live nested delegation were not exercised.
+
+#### JSON finalizer for Muse
+
+Muse 1.4.7 emits envelope records with `payload_type` and `payload`, not Claude/Cursor `type: result` events.
+The root `session.run.linked` record identifies both the session (`stream.id`) and the run (`payload.run_stream.id`).
+Filter terminal and model records to that exact session and run; nested tasks and observer completions are not the root answer.
+`run.terminal.completed` carries the final text in `payload.text`, with `payload.terminal == "completed"`.
+Keep this parser version-specific and recheck the event contract when upgrading.
+
+Define this helper before the Muse invocation and call it only after the process exits:
+
+```bash
+agent_finish_muse_round() {
+if ! jq -Rsr --argjson code "$agent_exit" '
+  split("\n") as $lines
+  | [$lines[] | fromjson? | objects] as $events
+  | ([$events[] | select(.payload_type == "session.run.linked"
+                         and .stream.kind == "session")] | first) as $root
+  | ($root.stream.id // "") as $sid
+  | ([$events[] | select(.payload_type == "session.run.linked"
+                         and .stream.id == $sid)] | last) as $link
+  | ($link.payload.run_stream.id // "") as $rid
+  | [$events[] | select(.stream.id == $sid
+                         and .payload.run_stream.id == $rid)] as $run
+  | ([$run[] | select(.payload.kind == "run_terminal")] | last) as $end
+  | ([$run[] | select(.payload_type == "run.model.configured")] | last) as $model
+  | "RUN_STATUS: \(if $code == 0 and $sid != "" and $rid != ""
+                       and $end.payload_type == "run.terminal.completed"
+                       and $end.payload.terminal == "completed"
+                       and (($end.payload.text // "") | length) > 0
+                    then "COMPLETED" else "FAILED" end)\n"
+    + "SESSION_ID: \($sid)\nMODEL: \($model.payload.model_id // "")\n"
+    + "TERMINAL: \($end.payload.terminal // "missing")\n"
+    + "REASON: \(($end.payload.reason // "") | tostring | .[0:2000])\n"
+    + "EFFORT_DIAGNOSTIC: \([$lines[]
+         | select(startswith("tbh: reasoning effort "))][-3:] | join("; ") | .[0:2000])\n\n"
+    + ($end.payload.text // "No terminal report; use bounded failure extraction.")
+' "$agent_log" > "$agent_response" 2>/dev/null; then
+  printf 'RUN_STATUS: FAILED\nMuse final-output extraction failed.\n' > "$agent_response"
+  agent_exit=1
+  return
+fi
+
+agent_returned_session="$(sed -n 's/^SESSION_ID: //p' "$agent_response" | head -n 1)"
+if test -s "$agent_session"; then
+  if test "$(sed -n '1p' "$agent_session")" != "$agent_returned_session"; then
+    printf '\nRUN_STATUS: FAILED\nSession identity missing or mismatched.\n' >> "$agent_response"
+    agent_exit=1
+  fi
+elif test -n "$agent_returned_session"; then
+  printf '%s\n' "$agent_returned_session" > "$agent_session"
+fi
+if grep -q '^RUN_STATUS: FAILED$' "$agent_response" && test "$agent_exit" -eq 0; then
+  agent_exit=1
+fi
+}
+```
+
+An `EFFORT_DIAGNOSTIC` fallback requires reporting the actual setting and resolving the mismatch before further work, even with `RUN_STATUS: COMPLETED`.
+The helper preserves a nonzero process status and treats a missing terminal answer or mismatched session as failure.
+It extracts only terminal output, model/session metadata, and the bounded effort warning; never substitute streamed deltas or export the entire transcript into the parent context.
+`muse export --session <uuid> --out <file>` is an offline audit surface, not the normal final-answer reader; its default export includes raw session content.
+
 #### JSON finalizer for Claude and Cursor
 
 Define this shell function before the Claude or Cursor invocation and call it only after that CLI exits.
@@ -443,6 +613,12 @@ If no exact ID can be recovered from this task's own structured metadata, report
 
 A non-zero exit, missing final response, materialized error, or missing required terminal result is a process failure.
 Keep failure reporting separate from a successful process that asks a task-level question.
+
+For Muse, the finalizer already extracts the root terminal reason, including failed or cancelled runs.
+Documented process statuses are `0` for a completed turn, `1` for failure/cancellation or a step limit, `2` for usage errors, and `130`/`143` for SIGINT/SIGTERM.
+A completed turn can still report an incomplete task.
+When startup fails before JSON events, extract only a bounded plain diagnostic from the task log into the response file, such as the rejected effort or unavailable credential; never print the whole help/transcript.
+Do not use the following Claude/Cursor/Codex event filter for Muse envelopes.
 
 For failures without a useful final diagnostic, mechanically extract only explicit error records into a new response file:
 
