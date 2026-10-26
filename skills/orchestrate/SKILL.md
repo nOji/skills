@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Run an existing task series through Codex, Claude Code, or Cursor Agent with an approved dependency schedule, optional parallel execution, opt-in reviews, and commits after completed steps.
+description: Run an existing task series through Codex or Claude Code with an approved dependency schedule, optional parallel execution, opt-in reviews, and commits after completed steps.
 ---
 
 # Coordinate a task series
@@ -30,7 +30,7 @@ Keep the chosen runtime for the whole task, including continuations and nested r
 ### Orchestrator tools
 
 Use the tools that accompany `orchestrator_capabilities`, with the same name prefix.
-Do not read the adjacent `harness-cli.md`, `codex.md`, `claude.md`, or `cursor.md`; they apply only to harness CLIs.
+Do not read the adjacent `harness-cli.md`, `codex.md`, or `claude.md`; they apply only to harness CLIs.
 
 | Operation | Tool use |
 | --- | --- |
@@ -53,7 +53,7 @@ When a workflow continues the same session, use `t3_thread_send`, even for a rev
 ### Harness CLIs
 
 Read the adjacent `harness-cli.md` completely before running a child.
-Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md`, Claude Code reads `claude.md`, and Cursor reads `cursor.md`.
+Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md` and Claude Code reads `claude.md`.
 For another parent, use its native managed asynchronous process facility.
 
 ## 1. Agree on the run
@@ -62,8 +62,8 @@ Use the user's request and task documents to enumerate the series without redefi
 Resolve only missing decisions:
 
 - Tasks, dependencies, and any shared files or mutable resources.
-- Implementor harness and model, including per-task overrides when requested.
-- Only for requested reviews: coverage, reviewer harness/model, and review continuity.
+- Implementor harness, model, supported effort and speed, including per-task overrides when requested.
+- Only for requested reviews: coverage, reviewer harness/model, supported effort and speed, and review continuity.
 - Execution order and which independent tasks may overlap.
 - Step and batch boundaries, and any override to the default commit policy.
 - Existing tracking, outcome-log, and commit conventions.
@@ -285,8 +285,11 @@ Authentication and catalogs do not guarantee quota or model access; handle execu
 Present a compact menu only for choices still missing.
 Show display names, one line per harness, and ask for the model, supported effort, and available speed choice.
 Shortlist large model families rather than printing every variant.
-Use the calling skill's recommendation only when available.
+Require explicit user choices for the harness and model, plus effort and speed wherever supported.
+Do not supply default recommendations or select missing values on the user's behalf, including from saved CLI settings.
+Reuse choices the user already supplied; ask only for missing supported choices and wait for them before launching a child.
 Treat selections supplied through an approved orchestration prompt as already answered.
+If delegated, return missing user decisions to the coordinator instead of waiting for interactive input inside a headless run.
 Do not switch harness, model, effort, or requested speed on your own.
 If runtime metadata reports a substituted model, surface it rather than attributing the work to the requested model.
 
@@ -327,13 +330,11 @@ When delegating a skill, put the explicit invocation at the beginning of the chi
 | --- | --- |
 | Codex | `$co-review`, or the path-qualified mention `[$co-review](/absolute/skills/co-review/SKILL.md)` |
 | Claude Code | `/co-review <task and supplied choices>` |
-| Cursor Agent | `/co-review <task and supplied choices>` |
-| Muse Code | Interactive `/<skill-name>` is documented; headless expansion is not verified, so use the calling workflow's embedded route unless native loading has been established |
 
 Use the actual registered command for a namespaced plugin skill.
 The skill name is prompt content, not a shell command or a model flag.
-Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in headless prompts; Cursor documents explicit slash-skill invocation.
-See [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Claude headless skills](https://code.claude.com/docs/en/headless), and [Cursor skills](https://cursor.com/docs/skills).
+Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in headless prompts.
+See [Codex skills](https://learn.chatgpt.com/docs/build-skills) and [Claude headless skills](https://code.claude.com/docs/en/headless).
 
 Before offering an installed skill route, resolve its real entrypoint and confirm it is enabled and usable by the selected child in this working directory.
 Use an existing skill listing when available, then check the relevant normal discovery locations:
@@ -342,8 +343,6 @@ Use an existing skill listing when available, then check the relevant normal dis
 | --- | --- |
 | Codex | Applicable ancestor `.agents/skills/` directories and `~/.agents/skills/`, plus configured plugin skills |
 | Claude Code | Applicable `.claude/skills/`, `~/.claude/skills/`, and installed plugin skills |
-| Cursor Agent | Applicable `.agents/skills/`, `.cursor/skills/`, their user-level equivalents, and supported compatibility/plugin locations |
-| Muse Code | `muse skills list --enabled-only --workspace "<workspace>" --json`; inspect the chosen ID with `muse skills inspect` |
 
 Follow symlinks and actual configuration; do not assume a directory exists or a parent-visible skill is registered in every child.
 File existence alone does not prove that a particular child version will expand its command.
@@ -484,12 +483,15 @@ Read the relevant work, reproduce claimed failures when practical, and distingui
 Consider skipped requirements, integration behavior, error paths, and unintended scope changes.
 Avoid speculative findings or changes justified only by personal taste.
 
+The author should be careful of scope creep and should not hesitate to push back on critiques that are non-issues or introduce work beyond the user's request, explaining why.
+When sending review feedback to a child author, include this instruction in the follow-up.
+
 For each finding, the author chooses one response:
 
 | Response | Required action |
 | --- | --- |
 | Confirmed | Fix it and report the change and verification |
-| Rejected | Give evidence explaining why the finding is incorrect |
+| Rejected | Give evidence explaining why the finding is incorrect or the requested change exceeds the user's scope |
 | Judgment call | State the chosen approach and its trade-off |
 
 Invite pushback in both directions.

@@ -25,7 +25,7 @@ Keep the chosen runtime for the whole task, including continuations and nested r
 ### Orchestrator tools
 
 Use the tools that accompany `orchestrator_capabilities`, with the same name prefix.
-Do not read the adjacent `harness-cli.md`, `codex.md`, `claude.md`, or `cursor.md`; they apply only to harness CLIs.
+Do not read the adjacent `harness-cli.md`, `codex.md`, or `claude.md`; they apply only to harness CLIs.
 
 | Operation | Tool use |
 | --- | --- |
@@ -48,7 +48,7 @@ When a workflow continues the same session, use `t3_thread_send`, even for a rev
 ### Harness CLIs
 
 Read the adjacent `harness-cli.md` completely before running a child.
-Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md`, Claude Code reads `claude.md`, and Cursor reads `cursor.md`.
+Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md` and Claude Code reads `claude.md`.
 For another parent, use its native managed asynchronous process facility.
 
 ## 1. Select the UI worker
@@ -56,7 +56,7 @@ For another parent, use its native managed asynchronous process facility.
 Use the selected runtime to discover available harnesses and models.
 Reuse the user's supplied harness, model, and execution settings.
 If the harness or model is missing, ask the user to choose the missing value rather than selecting a default.
-Resolve remaining execution choices through the selected runtime and retain the selected settings across rounds.
+Ask the user for any missing supported effort and speed choices under the delegation rules, and retain the selected settings across rounds.
 If this skill was delegated, return missing user decisions to the coordinating parent.
 You may prepare the feature while awaiting a selection, but do not launch an unselected UI worker.
 
@@ -125,6 +125,7 @@ Preserve unrelated changes throughout.
 
 Batch functional findings and any newly prepared prerequisites into one follow-up to the same UI session with the same selected settings.
 Describe the affected integration points, expected behavior, and concrete evidence rather than prescribing a visual redesign.
+Tell the UI implementor to be careful of scope creep and not hesitate to push back, with an explanation, on critiques that are non-issues or go beyond the user's request.
 Repeat until the complete feature works, required UI states are covered, and no handoff placeholders or missing prerequisites remain.
 On launch or continuation failure, follow the delegation rules' failure and recovery rules; preserve completed work and the session rather than silently switching models or taking over the UI design.
 
@@ -148,8 +149,11 @@ Authentication and catalogs do not guarantee quota or model access; handle execu
 Present a compact menu only for choices still missing.
 Show display names, one line per harness, and ask for the model, supported effort, and available speed choice.
 Shortlist large model families rather than printing every variant.
-Use the calling skill's recommendation only when available.
+Require explicit user choices for the harness and model, plus effort and speed wherever supported.
+Do not supply default recommendations or select missing values on the user's behalf, including from saved CLI settings.
+Reuse choices the user already supplied; ask only for missing supported choices and wait for them before launching a child.
 Treat selections supplied through an approved orchestration prompt as already answered.
+If delegated, return missing user decisions to the coordinator instead of waiting for interactive input inside a headless run.
 Do not switch harness, model, effort, or requested speed on your own.
 If runtime metadata reports a substituted model, surface it rather than attributing the work to the requested model.
 
@@ -190,13 +194,11 @@ When delegating a skill, put the explicit invocation at the beginning of the chi
 | --- | --- |
 | Codex | `$co-review`, or the path-qualified mention `[$co-review](/absolute/skills/co-review/SKILL.md)` |
 | Claude Code | `/co-review <task and supplied choices>` |
-| Cursor Agent | `/co-review <task and supplied choices>` |
-| Muse Code | Interactive `/<skill-name>` is documented; headless expansion is not verified, so use the calling workflow's embedded route unless native loading has been established |
 
 Use the actual registered command for a namespaced plugin skill.
 The skill name is prompt content, not a shell command or a model flag.
-Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in headless prompts; Cursor documents explicit slash-skill invocation.
-See [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Claude headless skills](https://code.claude.com/docs/en/headless), and [Cursor skills](https://cursor.com/docs/skills).
+Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in headless prompts.
+See [Codex skills](https://learn.chatgpt.com/docs/build-skills) and [Claude headless skills](https://code.claude.com/docs/en/headless).
 
 Before offering an installed skill route, resolve its real entrypoint and confirm it is enabled and usable by the selected child in this working directory.
 Use an existing skill listing when available, then check the relevant normal discovery locations:
@@ -205,8 +207,6 @@ Use an existing skill listing when available, then check the relevant normal dis
 | --- | --- |
 | Codex | Applicable ancestor `.agents/skills/` directories and `~/.agents/skills/`, plus configured plugin skills |
 | Claude Code | Applicable `.claude/skills/`, `~/.claude/skills/`, and installed plugin skills |
-| Cursor Agent | Applicable `.agents/skills/`, `.cursor/skills/`, their user-level equivalents, and supported compatibility/plugin locations |
-| Muse Code | `muse skills list --enabled-only --workspace "<workspace>" --json`; inspect the chosen ID with `muse skills inspect` |
 
 Follow symlinks and actual configuration; do not assume a directory exists or a parent-visible skill is registered in every child.
 File existence alone does not prove that a particular child version will expand its command.
