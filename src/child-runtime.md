@@ -12,7 +12,7 @@ Keep the chosen runtime for the whole task, including continuations and nested r
 ## Orchestrator tools
 
 Use the tools that accompany `orchestrator_capabilities`, with the same name prefix.
-Do not read the adjacent `harness-cli.md`, `codex.md`, `claude.md`, or `cursor.md`; they apply only to harness CLIs.
+Do not read the adjacent `harness-cli.md`, `codex.md`, or `claude.md`; they apply only to harness CLIs.
 
 | Operation | Tool use |
 | --- | --- |
@@ -35,5 +35,5 @@ When a workflow continues the same session, use `t3_thread_send`, even for a rev
 ## Harness CLIs
 
 Read the adjacent `harness-cli.md` completely before running a child.
-Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md`, Claude Code reads `claude.md`, and Cursor reads `cursor.md`.
+Read only the adjacent guide matching the parent that loaded this skill: Codex reads `codex.md` and Claude Code reads `claude.md`.
 For another parent, use its native managed asynchronous process facility.

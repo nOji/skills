@@ -56,12 +56,15 @@ Read the relevant work, reproduce claimed failures when practical, and distingui
 Consider skipped requirements, integration behavior, error paths, and unintended scope changes.
 Avoid speculative findings or changes justified only by personal taste.
 
+The author should be careful of scope creep and should not hesitate to push back on critiques that are non-issues or introduce work beyond the user's request, explaining why.
+When sending review feedback to a child author, include this instruction in the follow-up.
+
 For each finding, the author chooses one response:
 
 | Response | Required action |
 | --- | --- |
 | Confirmed | Fix it and report the change and verification |
-| Rejected | Give evidence explaining why the finding is incorrect |
+| Rejected | Give evidence explaining why the finding is incorrect or the requested change exceeds the user's scope |
 | Judgment call | State the chosen approach and its trade-off |
 
 Invite pushback in both directions.

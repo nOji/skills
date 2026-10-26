@@ -39,7 +39,7 @@ A newly added source must be included even when no generated directory or skill-
 | `src/delegation.md` | Runtime-independent selection, access, prompt, ownership, session, and failure rules |
 | `src/harness-cli.md` | Child CLI discovery, flags, launch, continuation, output extraction, and CLI diagnostics |
 | `src/review-protocol.md` | Shared evidence, dialogue, review continuity, ownership, and review completion |
-| `src/codex.md`, `src/claude.md`, `src/cursor.md` | CLI-runtime instructions for the agent loading the skill |
+| `src/codex.md`, `src/claude.md` | CLI-runtime instructions for the agent loading the skill |
 | `src/explicit-only.openai.yaml` | Public Codex invocation policy |
 
 Each public `SKILL.md` embeds its complete definition and each required shared module exactly once.
@@ -93,14 +93,14 @@ Do not rewrite solely for formatting, unrelated documentation changes, or becaus
    For delegate-ui, preserve the parent's ownership of feature logic and functional review and the child's ownership of presentation and visual design.
    Preserve additional skills' roles as defined by their canonical sources.
 4. Ensure the embedded child runtime directs a harness-CLI run to the adjacent `harness-cli.md` and exactly its matching adjacent parent guide, and an orchestrator-tool run away from both.
-   Copy `src/harness-cli.md` and the three parent guides beside every such entrypoint without merging their instructions into `SKILL.md`.
+   Copy `src/harness-cli.md` and both parent guides beside every such entrypoint without merging their instructions into `SKILL.md`.
 5. Preserve valid YAML frontmatter with a name matching the source inventory and output directory.
    Copy `src/explicit-only.openai.yaml` to each `agents/openai.yaml`.
 6. Remove stale generated files and directories, standalone copies of embedded modules, source-only commentary, temporary files, and symlinks.
    Confirm stale output ownership from Git status and history, preserving unrelated work.
    Do not leave links back to canonical source paths.
 
-Each public directory must contain only `SKILL.md`, `harness-cli.md`, `codex.md`, `claude.md`, `cursor.md`, and `agents/openai.yaml`.
+Each public directory must contain only `SKILL.md`, `harness-cli.md`, `codex.md`, `claude.md`, and `agents/openai.yaml`.
 Normal discovery must expose exactly the canonical names from the complete source inventory; this internal preparation skill stays outside that public surface.
 
 ## Review the result
@@ -109,6 +109,7 @@ Compare source and generated name sets and report any missing or extra skills; e
 Check every generated skill against all its required inputs for semantic completeness, module duplication, local links and anchors, YAML identity, and parent-versus-child instruction placement.
 Check that each adjacent `harness-cli.md` matches its source, that `SKILL.md` embeds no harness CLI reference, and that the runtime gate precedes child discovery and reaches each runtime's complete instructions.
 Check that reviewer-using workflows settle review continuity before the first reviewer launch, forward it to nested reviews, and map both continuity choices onto each runtime.
+Check that every child launch requires explicit user selections for the harness, model, and supported effort and speed, reuses existing selections, and introduces no default model recommendations.
 Check that orchestration retains per-task reviewer choices, approved parallel scheduling, both review routes, agreement before dependent work, and serialized shared writes.
 Check that delegate-ui retains parent-owned prerequisites, one batched UI handoff, functional review, design autonomy, and completion of the integrated feature.
 Apply each additional definition's own completion requirements to its generated result.

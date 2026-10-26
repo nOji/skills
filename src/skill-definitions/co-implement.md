@@ -1,6 +1,6 @@
 ---
 name: co-implement
-description: Delegate one implementation to Codex, Claude Code, or Cursor Agent, then independently review and iterate on its work. Use when the user requests a supervised implementation by another agent or invokes co-implement.
+description: Delegate one implementation to Codex or Claude Code, then independently review and iterate on its work. Use when the user requests a supervised implementation by another agent or invokes co-implement.
 ---
 
 # Supervise one implementation
@@ -14,9 +14,7 @@ Before running a child, choose its runtime in the [child runtime](#child-runtime
 
 Before studying implementation files, use the selected runtime to discover available harnesses and models.
 Ask only for choices the user has not already supplied.
-The preferred recommendation is Codex GPT-5.6 Luna, `xhigh`, fast; use the equivalent through Cursor if Codex is unavailable.
-Recommend it only when the current catalog supports that combination.
-Otherwise present the available choices without substituting a different default.
+Require the user's explicit selections under the delegation rules before launching the implementor.
 
 Keep the approved harness, model, effort, speed, and full-access launch settings for every round.
 

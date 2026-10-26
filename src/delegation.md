@@ -11,8 +11,11 @@ Authentication and catalogs do not guarantee quota or model access; handle execu
 Present a compact menu only for choices still missing.
 Show display names, one line per harness, and ask for the model, supported effort, and available speed choice.
 Shortlist large model families rather than printing every variant.
-Use the calling skill's recommendation only when available.
+Require explicit user choices for the harness and model, plus effort and speed wherever supported.
+Do not supply default recommendations or select missing values on the user's behalf, including from saved CLI settings.
+Reuse choices the user already supplied; ask only for missing supported choices and wait for them before launching a child.
 Treat selections supplied through an approved orchestration prompt as already answered.
+If delegated, return missing user decisions to the coordinator instead of waiting for interactive input inside a headless run.
 Do not switch harness, model, effort, or requested speed on your own.
 If runtime metadata reports a substituted model, surface it rather than attributing the work to the requested model.
 
@@ -53,13 +56,11 @@ When delegating a skill, put the explicit invocation at the beginning of the chi
 | --- | --- |
 | Codex | `$co-review`, or the path-qualified mention `[$co-review](/absolute/skills/co-review/SKILL.md)` |
 | Claude Code | `/co-review <task and supplied choices>` |
-| Cursor Agent | `/co-review <task and supplied choices>` |
-| Muse Code | Interactive `/<skill-name>` is documented; headless expansion is not verified, so use the calling workflow's embedded route unless native loading has been established |
 
 Use the actual registered command for a namespaced plugin skill.
 The skill name is prompt content, not a shell command or a model flag.
-Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in headless prompts; Cursor documents explicit slash-skill invocation.
-See [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Claude headless skills](https://code.claude.com/docs/en/headless), and [Cursor skills](https://cursor.com/docs/skills).
+Codex documents explicit `$skill` invocation; Claude documents slash-skill expansion in headless prompts.
+See [Codex skills](https://learn.chatgpt.com/docs/build-skills) and [Claude headless skills](https://code.claude.com/docs/en/headless).
 
 Before offering an installed skill route, resolve its real entrypoint and confirm it is enabled and usable by the selected child in this working directory.
 Use an existing skill listing when available, then check the relevant normal discovery locations:
@@ -68,8 +69,6 @@ Use an existing skill listing when available, then check the relevant normal dis
 | --- | --- |
 | Codex | Applicable ancestor `.agents/skills/` directories and `~/.agents/skills/`, plus configured plugin skills |
 | Claude Code | Applicable `.claude/skills/`, `~/.claude/skills/`, and installed plugin skills |
-| Cursor Agent | Applicable `.agents/skills/`, `.cursor/skills/`, their user-level equivalents, and supported compatibility/plugin locations |
-| Muse Code | `muse skills list --enabled-only --workspace "<workspace>" --json`; inspect the chosen ID with `muse skills inspect` |
 
 Follow symlinks and actual configuration; do not assume a directory exists or a parent-visible skill is registered in every child.
 File existence alone does not prove that a particular child version will expand its command.

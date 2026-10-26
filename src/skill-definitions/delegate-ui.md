@@ -16,7 +16,7 @@ Before running a child, choose its runtime in the [child runtime](#child-runtime
 Use the selected runtime to discover available harnesses and models.
 Reuse the user's supplied harness, model, and execution settings.
 If the harness or model is missing, ask the user to choose the missing value rather than selecting a default.
-Resolve remaining execution choices through the selected runtime and retain the selected settings across rounds.
+Ask the user for any missing supported effort and speed choices under the delegation rules, and retain the selected settings across rounds.
 If this skill was delegated, return missing user decisions to the coordinating parent.
 You may prepare the feature while awaiting a selection, but do not launch an unselected UI worker.
 
@@ -85,6 +85,7 @@ Preserve unrelated changes throughout.
 
 Batch functional findings and any newly prepared prerequisites into one follow-up to the same UI session with the same selected settings.
 Describe the affected integration points, expected behavior, and concrete evidence rather than prescribing a visual redesign.
+Tell the UI implementor to be careful of scope creep and not hesitate to push back, with an explanation, on critiques that are non-issues or go beyond the user's request.
 Repeat until the complete feature works, required UI states are covered, and no handoff placeholders or missing prerequisites remain.
 On launch or continuation failure, follow the delegation rules' failure and recovery rules; preserve completed work and the session rather than silently switching models or taking over the UI design.
 

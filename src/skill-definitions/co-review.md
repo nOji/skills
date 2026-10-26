@@ -1,6 +1,6 @@
 ---
 name: co-review
-description: Obtain an independent review of a plan, diff, or task output from Codex, Claude Code, or Cursor Agent, then resolve findings through evidence, fixes, and rebuttals until both participants agree.
+description: Obtain an independent review of a plan, diff, or task output from Codex or Claude Code, then resolve findings through evidence, fixes, and rebuttals until both participants agree.
 ---
 
 # Resolve an independent review
@@ -17,10 +17,7 @@ Before studying the review subject, discover available harnesses and models usin
 Reuse choices and authorization already supplied by the user or an orchestrator acting on the user's approved plan.
 Do not repeat a model menu, permission question, or review-scope question that has already been answered.
 
-The preferred recommendation is Codex GPT-5.6 Sol, `high`, normal; use the equivalent through Cursor if Codex is unavailable.
-Recommend it only when the current catalog supports that combination.
-Consider a different model family from the author when recommending an independent reviewer.
-Otherwise present the available choices without inventing a replacement default.
+Require the user's explicit selections under the delegation rules before launching the reviewer.
 
 Settle review continuity as the review protocol describes.
 Keep the chosen reviewer settings, review continuity, and full host access across all rounds.

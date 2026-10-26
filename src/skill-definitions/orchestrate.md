@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Run an existing task series through Codex, Claude Code, or Cursor Agent with an approved dependency schedule, optional parallel execution, opt-in reviews, and commits after completed steps.
+description: Run an existing task series through Codex or Claude Code with an approved dependency schedule, optional parallel execution, opt-in reviews, and commits after completed steps.
 ---
 
 # Coordinate a task series
@@ -22,8 +22,8 @@ Use the user's request and task documents to enumerate the series without redefi
 Resolve only missing decisions:
 
 - Tasks, dependencies, and any shared files or mutable resources.
-- Implementor harness and model, including per-task overrides when requested.
-- Only for requested reviews: coverage, reviewer harness/model, and review continuity.
+- Implementor harness, model, supported effort and speed, including per-task overrides when requested.
+- Only for requested reviews: coverage, reviewer harness/model, supported effort and speed, and review continuity.
 - Execution order and which independent tasks may overlap.
 - Step and batch boundaries, and any override to the default commit policy.
 - Existing tracking, outcome-log, and commit conventions.
