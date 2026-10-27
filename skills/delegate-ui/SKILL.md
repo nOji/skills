@@ -39,7 +39,8 @@ Do not read the adjacent `harness-cli.md`, `codex.md`, or `claude.md`; they appl
 
 Request `runtimeMode: "full-access"` when full access is authorized and the target lists it; otherwise report the narrower available mode before launching.
 Record each session's `childThreadId` as its session identifier and each round's `taskId` as that round's handle.
-Save each round's `summary` to its round-specific response file under `.agent-runs/` before acting on it.
+Read each round's `summary` directly from `task_status` and use the recorded `childThreadId` and that round's `taskId` to reference the conversation and result.
+Use the tool-managed threads and task results as run records; do not create local run directories or export conversations, summaries, session metadata, or diagnostics to separate files.
 Treat a failed task, a provider error in its summary, or a missing summary as a process failure.
 A completed task with pending child runs is not finished until those runs settle.
 
@@ -132,7 +133,7 @@ On launch or continuation failure, follow the delegation rules' failure and reco
 ## 5. Deliver the complete feature
 
 Verify the final integrated feature after the last changes and distinguish completed checks from anything that could not be verified.
-Report the parent-owned functionality, delegated UI work, selected UI implementor, final response path, and any remaining limitation.
+Report the parent-owned functionality, delegated UI work, selected UI implementor, final response reference, and any remaining limitation.
 Do not claim completion while required functionality or UI work remains unfinished.
 Follow the user's commit-message convention for the complete task change and commit only when authorized.
 
@@ -219,27 +220,13 @@ An unattended child returns any genuinely missing decision to its coordinator in
 
 ### 4. Run records and ownership
 
-Before creating run artifacts in a Git working tree, establish a local ignore rule:
-
-```bash
-agent_exclude_path="$(git rev-parse --git-path info/exclude)" || exit 1
-mkdir -p "$(dirname "$agent_exclude_path")"
-touch "$agent_exclude_path"
-grep -qxF '/.agent-runs/' "$agent_exclude_path" ||
-  printf '\n/.agent-runs/\n' >> "$agent_exclude_path"
-git check-ignore -q --no-index .agent-runs/.ignore-check || exit 1
-test -z "$(git ls-files -- .agent-runs)" || {
-  echo "Run artifacts are already tracked; resolve that before delegation." >&2
-  exit 1
-}
-mkdir -p .agent-runs
-```
-
-This changes local Git metadata, not tracked `.gitignore`.
-If the directory is not a Git working tree or run artifacts cannot be kept untracked, stop before launching.
+Use the selected runtime's run records for session identifiers, round results, and bounded failure diagnostics.
+Keep each task, role, round, and nested review distinct.
+Pass prompts directly instead of creating prompt files.
+Read only each round's final response, never a streamed transcript, including for progress or failure diagnosis.
 
 Capture ownership without dumping source into the parent context:
-save `git diff --cached --binary HEAD` and `git diff --binary` as separate files, plus a NUL-safe untracked-file manifest with path, type, and SHA-256 content hash.
+retain staged and unstaged content baselines separately, plus a NUL-safe untracked-file manifest with path, type, and SHA-256 content hash.
 For an unborn repository, use the index-versus-empty-tree baseline instead of `HEAD`.
 Retain content needed for any safe restoration; hashes alone cannot restore a modified untracked file.
 
@@ -248,11 +235,6 @@ Preserve pre-existing user work and other agents' changes.
 Only stage, revert, or commit deltas whose ownership is established.
 Never use broad staging such as `git add .` or `git add -A`.
 In concurrent work, keep ownership boundaries and serialize all shared-index changes.
-
-Give each task and role a unique stem, such as `.agent-runs/<task>-<role>`, and a new round-specific final-response file, such as `...-r1.response.md`, for every round.
-Keep nested review artifacts distinct.
-Store artifacts here rather than in `/tmp`; pass prompts directly instead of creating prompt files.
-Read only each round's final response, never a streamed transcript, including for progress or failure diagnosis.
 
 ### 5. Sessions and continuations
 
@@ -273,7 +255,7 @@ A successful run can still describe a blocked or incomplete task; inspect its me
 
 A failed or cancelled run, a missing final response, or a missing required terminal result is a process failure.
 Keep failure reporting separate from a successful run that asks a task-level question.
-Materialize a bounded diagnostic into a round-specific response file and keep an existing useful final report intact.
+Retain a bounded diagnostic in the selected runtime's record for that round and keep an existing useful final report intact.
 
 Correct an accidental launch restriction to the already-authorized full-access settings and continue the same task without asking for permission again.
 For a parent tool that prematurely ended the child, retry once through its proper managed facility.

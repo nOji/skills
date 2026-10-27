@@ -1,6 +1,6 @@
 # Harness CLI reference
 
-Launch, continuation, output-extraction, and CLI-failure commands for Codex and Claude Code child processes.
+Launch, continuation, local run records, output-extraction, and CLI-failure commands for Codex and Claude Code child processes.
 Use this file only when the skill selected harness CLIs as its child runtime.
 The skill's embedded delegation rules still govern selection, access, prompts, ownership, sessions, and recovery; this file adds the CLI mechanics.
 Parent-specific process tools belong in the adjacent parent guides.
@@ -84,7 +84,34 @@ Claude documents slash-skill expansion in `-p` prompts.
 
 ## 4. Run files
 
-Within the task and role stem from the delegation rules, use `.agent-runs/<task>-<role>-r1.log` and `...-r1.response.md`, with new log and response files for every round.
+Before creating run artifacts or launching a child in a Git working tree, establish a local ignore rule:
+
+```bash
+agent_exclude_path="$(git rev-parse --git-path info/exclude)" || exit 1
+mkdir -p "$(dirname "$agent_exclude_path")"
+touch "$agent_exclude_path"
+grep -qxF '/.agent-runs/' "$agent_exclude_path" ||
+  printf '\n/.agent-runs/\n' >> "$agent_exclude_path"
+git check-ignore -q --no-index .agent-runs/.ignore-check || exit 1
+test -z "$(git ls-files -- .agent-runs)" || {
+  echo "Run artifacts are already tracked; resolve that before delegation." >&2
+  exit 1
+}
+mkdir -p .agent-runs
+```
+
+This changes local Git metadata, not tracked `.gitignore`.
+If the directory is not a Git working tree or run artifacts cannot be kept untracked, stop before launching.
+Store run artifacts under `.agent-runs/` rather than in `/tmp`.
+Keep nested review artifacts distinct.
+
+Store the delegation rules' ownership baselines here:
+save `git diff --cached --binary HEAD` and `git diff --binary` as separate files, plus the NUL-safe untracked-file manifest and content needed for safe restoration.
+For an unborn repository, use the index-versus-empty-tree baseline instead of `HEAD`.
+Use this directory for an orchestration record when there is no established tracking location.
+
+Give each task and role a unique stem, such as `.agent-runs/<task>-<role>`.
+Use `.agent-runs/<task>-<role>-r1.log` and `...-r1.response.md`, with new log and response files for every round.
 Store each session's exact ID in its own one-line session file.
 A continued session keeps one stable `.agent-runs/<task>-<role>.session` file.
 A fresh session for a later round writes a new round-specific file, such as `.agent-runs/<task>-<role>-r2.session`, and never overwrites an earlier session file.
