@@ -26,7 +26,8 @@ Do not read the adjacent `harness-cli.md`, `codex.md`, or `claude.md`; they appl
 
 Request `runtimeMode: "full-access"` when full access is authorized and the target lists it; otherwise report the narrower available mode before launching.
 Record each session's `childThreadId` as its session identifier and each round's `taskId` as that round's handle.
-Save each round's `summary` to its round-specific response file under `.agent-runs/` before acting on it.
+Read each round's `summary` directly from `task_status` and use the recorded `childThreadId` and that round's `taskId` to reference the conversation and result.
+Use the tool-managed threads and task results as run records; do not create local run directories or export conversations, summaries, session metadata, or diagnostics to separate files.
 Treat a failed task, a provider error in its summary, or a missing summary as a process failure.
 A completed task with pending child runs is not finished until those runs settle.
 

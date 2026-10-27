@@ -90,7 +90,7 @@ src/
   claude.md                      # Guidance only for a Claude Code parent agent
   child-runtime.md               # Chooses orchestrator tools or harness CLIs
   delegation.md                  # Runtime-independent delegation and ownership rules
-  harness-cli.md                 # Child CLI commands, shipped beside each SKILL.md
+  harness-cli.md                 # Child CLI commands and local run records, shipped beside each SKILL.md
   review-protocol.md             # Shared review dialogue, continuity, and completion rules
   explicit-only.openai.yaml
   skill-definitions/
@@ -130,7 +130,8 @@ skills/                              # Generated and committed
 When the loading agent can call an `orchestrator_capabilities` tool, it discovers, launches, continues, and cancels children through that tool family and ignores `harness-cli.md` and the parent guides.
 Otherwise it reads the adjacent `harness-cli.md` and its matching parent guide.
 `src/delegation.md` is the single source of truth for runtime-independent selection, access, prompt, ownership, session, and failure rules.
-`src/harness-cli.md` is the single source of truth for child CLI command forms.
+`src/harness-cli.md` is the single source of truth for child CLI command forms and local run-artifact storage.
+Orchestrator-tool runs use tool-managed threads and task results directly, without creating local run directories or copying conversations and results into files.
 `src/review-protocol.md` is the single source of truth for review evidence, dialogue, continuity, ownership, and completion.
 Before the first reviewer round, reviewer-using workflows ask whether the reviewer should continue one session across rounds or start fresh each round, and both runtimes support either choice.
 The two parent-agent guides contain only CLI-runtime behavior that changes because Codex or Claude Code loaded the skill; commands for invoking supported products as child harnesses remain in `src/harness-cli.md`.

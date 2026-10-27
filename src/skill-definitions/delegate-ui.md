@@ -92,6 +92,6 @@ On launch or continuation failure, follow the delegation rules' failure and reco
 ## 5. Deliver the complete feature
 
 Verify the final integrated feature after the last changes and distinguish completed checks from anything that could not be verified.
-Report the parent-owned functionality, delegated UI work, selected UI implementor, final response path, and any remaining limitation.
+Report the parent-owned functionality, delegated UI work, selected UI implementor, final response reference, and any remaining limitation.
 Do not claim completion while required functionality or UI work remains unfinished.
 Follow the user's commit-message convention for the complete task change and commit only when authorized.

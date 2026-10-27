@@ -28,7 +28,7 @@ Follow the delegation rules' minimal-prompt rule.
 Add only task-specific information the delegate lacks and the changed-file or incomplete-work reporting needed to supervise this task.
 Do not add reminders about automatically loaded instructions, context files, or routine commit-message conventions.
 
-Capture the initial ownership baseline under the locally ignored `.agent-runs/` directory.
+Capture the initial ownership baseline under the delegation rules.
 Launch one implementor through the selected runtime with the authorized full-access settings.
 
 ## 3. Wait, then review
@@ -48,14 +48,14 @@ Record any fixes you made so the implementor does not unknowingly undo them.
 ## 4. Iterate and sign off
 
 Use the review protocol's ownership and staging rules before the next round.
-Continue the exact recorded implementor session with new round files and the same launch settings.
+Continue the exact recorded implementor session with a distinct round record and the same launch settings.
 Review each round's new changes and any affected earlier conclusions.
 Continue until no blocking issue remains.
 
 If a launch or continuation fails, follow the delegation rules' failure and recovery rules.
 Do not silently change models, switch harnesses, or take over the implementation.
 
-Report the implementor, what changed, your own verification, any remaining limitation, and the final response path.
+Report the implementor, what changed, your own verification, any remaining limitation, and the final response reference.
 Mention staged changes only when you actually staged them.
 Follow the user's commit-message convention for the complete task change.
 Commit only when authorized.

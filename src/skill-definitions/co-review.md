@@ -60,7 +60,7 @@ A clean first review that you verified and accepted closes immediately.
 A review with unverified fixes or unanswered rebuttals remains open.
 
 Report the reviewer, final verdict, ledger, fixes, accepted rebuttals, checks performed by each participant, and remaining limitations.
-Link the final response file and mention any staging.
+Reference the final response using the selected runtime's run record and mention any staging.
 Follow the user's commit-message convention for remediation; commit only when authorized.
 
 When invoked by an orchestrator, return that report to it.

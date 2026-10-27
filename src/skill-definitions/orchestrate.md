@@ -102,7 +102,7 @@ Approve this run and per-step local commits?
 Replace field values with the actual run settings; show requested review coverage, reviewer settings, review continuity, and route only in the Review field.
 Adapt the Commit field and question to an explicit commit-policy override.
 Keep complete task names, per-task overrides, grouped-step finalizers, and shared-resource constraints in the orchestration record; link that record from the relevant field when the settings cannot fit.
-Use the established tracking location or the delegation rules' locally ignored run directory for that record.
+Use the established tracking location or the selected runtime's run records for that record.
 If higher-priority instructions require an approval-source explanation, append only one short sentence and include it in the same word limit.
 Reuse approval of this exact plan rather than asking again.
 
@@ -112,12 +112,12 @@ Maintain a compact record per task:
 
 - Task scope, dependencies, owning step, file/resource ownership, and selected settings.
 - Implementor session identifier and, when applicable, every reviewer session identifier.
-- Review route, round, finding ledger or delegated review report, and response paths.
+- Review route, round, finding ledger or delegated review report, and final response references.
 - State: `waiting`, `implementing`, `reviewing`, `fixing`, `finalizing`, `done`, `blocked`, or `failed`.
 
 Before a launch, capture the delegation rules' ownership baseline.
 For tasks launched together, use the same initial batch boundary and record each task's ownership.
-Give each task and role separate run files.
+Give each task and role separate run records.
 
 Build a minimal prompt from the user's task or its definition.
 Add only decisions needed for this execution: its review assignment, ownership, shared-resource coordination, and commit timing.
@@ -200,7 +200,7 @@ Confirm its state-tracking convention from the permitted tracking records and ag
 If tracking is missing or wrong, resume the responsible implementor to correct it; do not silently advance or edit its task content yourself.
 Bookkeeping outside the review subject may follow sign-off; changes to reviewed work require re-review.
 
-Write a concise outcome record in the agreed location: what completed, review disposition, response paths, and any remaining verification or user action.
+Write a concise outcome record in the agreed location: what completed, review disposition, final response references, and any remaining verification or user action.
 Distinguish verified review conclusions from an unreviewed implementor's own report.
 
 When the approved policy calls for a commit, resume the original implementor, or the designated finalizer for a grouped step, to stage and commit only changes proven to belong to that step.
@@ -227,7 +227,7 @@ Let already-active independent sessions settle, record all results, and present 
 Resume the same affected session after the answer.
 Do not start dependent work or call the task complete while blocked.
 
-On process failure, preserve work and session IDs, materialize the bounded diagnostic through the selected runtime, and stop new launches.
+On process failure, preserve work and session IDs, retain the bounded diagnostic in the selected runtime's run record, and stop new launches.
 Do not skip the failed task, silently change models, or take over its implementation or review.
 When a supplied full-access launch was accidentally restricted, correct the launch to the already-authorized settings and resume; no new permission question is needed.
 An actual host-policy rejection, missing credential, or unavailable service remains a real blocker.

@@ -136,4 +136,4 @@ Do not call an unresolved exchange complete.
 
 Report the outcome, accepted fixes, accepted rebuttals, checks actually performed, and any remaining limitation.
 For mutual-agreement reviews, include the final ledger and both participants' explicit disposition.
-Keep reports concise and reference the final response files rather than streamed transcripts.
+Keep reports concise and reference the selected runtime's final response records rather than streamed transcripts.
